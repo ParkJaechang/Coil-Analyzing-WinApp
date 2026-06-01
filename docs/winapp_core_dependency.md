@@ -4,7 +4,7 @@ The Windows App does not modify or vendor-copy the Streamlit WebApp code.
 
 ```text
 STREAMLIT_CORE_REPO=ParkJaechang/Coil-Analyzing
-STREAMLIT_CORE_SHA=8f8a881b040429a4d6451f15831602d2e76added
+STREAMLIT_CORE_SHA=a24d0388ca8d0be0e6a603df62936a3ff956a036
 SOURCE_OF_TRUTH_DOC=docs/pr61_user_feedback_resolution_log.md
 ```
 

@@ -13,7 +13,7 @@ TARGET_SHAPE = "fixed_rounded_triangle"
 FIELD_NORMALIZATION_MODE = "target_peak"
 VOLTAGE_LIMIT_V = 10.0
 CORE_REPO = "ParkJaechang/Coil-Analyzing"
-CORE_SHA = "8f8a881b040429a4d6451f15831602d2e76added"
+CORE_SHA = "a24d0388ca8d0be0e6a603df62936a3ff956a036"
 
 
 ModelingMode = Literal["finite_startup_aware", "continuous_steady_state"]
