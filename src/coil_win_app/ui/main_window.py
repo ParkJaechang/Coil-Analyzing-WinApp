@@ -19,8 +19,8 @@ class MainWindow(QMainWindow):
 
         tabs = QTabWidget()
         tabs.addTab(create_project_page(self.state), "Project / Data")
-        tabs.addTab(create_target_config_page(), "Target Config")
-        tabs.addTab(create_finite_modeling_page(), "Finite Modeling")
-        tabs.addTab(create_continuous_modeling_page(), "Continuous Modeling")
-        tabs.addTab(create_final_export_page(), "Final LUT Export")
+        tabs.addTab(create_target_config_page(self.state), "Target Config")
+        tabs.addTab(create_finite_modeling_page(self.state), "Finite Modeling")
+        tabs.addTab(create_continuous_modeling_page(self.state), "Continuous Modeling")
+        tabs.addTab(create_final_export_page(self.state), "Final LUT Export")
         self.setCentralWidget(tabs)

@@ -46,6 +46,17 @@ def test_final_lut_export_rejects_missing_limited_voltage() -> None:
     assert "limited_voltage_v" in str(export.error_reason)
 
 
+def test_demo_modeling_result_exports_with_exact_columns() -> None:
+    from coil_win_app.core_adapter import build_final_lut_export, create_demo_modeling_result
+
+    result = create_demo_modeling_result()
+    export = build_final_lut_export(result)
+
+    assert result.metadata["demo_only"] is True
+    assert export.status == "ok"
+    assert list(export.export_frame.columns) == ["sample_index", "time_s", "voltage_v"]
+
+
 def test_no_generated_user_data_committed() -> None:
     forbidden_suffixes = {".csv", ".xlsx", ".xlsm", ".xls"}
     repo_root = Path.cwd()

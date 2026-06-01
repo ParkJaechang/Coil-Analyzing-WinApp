@@ -32,23 +32,28 @@ def create_project_page(state: ProjectState) -> QWidget:
         if folder:
             state.set_project_path(folder)
             project_label.setText(f"Project folder: {folder}")
-            _refresh_source_counts(Path(folder), source_count_label)
+            _refresh_source_counts(Path(folder), source_count_label, state)
 
     def choose_data_folder() -> None:
         folder = QFileDialog.getExistingDirectory(widget, "Choose data folder")
         if folder:
             state.set_data_path(folder)
             data_label.setText(f"Data folder: {folder}")
-            _refresh_source_counts(Path(folder), source_count_label)
+            _refresh_source_counts(Path(folder), source_count_label, state)
 
     project_button.clicked.connect(choose_project_folder)
     data_button.clicked.connect(choose_data_folder)
     return widget
 
 
-def _refresh_source_counts(root: Path, label: QLabel) -> None:
+def _refresh_source_counts(root: Path, label: QLabel, state: ProjectState) -> None:
     result = load_project_sources(root)
-    counts = result.metadata.get("source_counts", {}) if result.status == "ok" else {}
+    if result.status != "ok":
+        message = f"source scan failed: status={result.status}; error={result.error_reason or 'unknown'}"
+        state.add_status(message)
+        label.setText(message)
+        return
+    counts = result.metadata.get("source_counts", {})
     label.setText(
         "finite: {finite} / continuous: {continuous} / actual-drive: {actual_drive} / unknown: {unknown}".format(
             finite=counts.get("finite", 0),

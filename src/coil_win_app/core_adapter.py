@@ -153,6 +153,25 @@ def build_final_lut_export(modeling_result: ModelingResult) -> ModelingResult:
     )
 
 
+def create_demo_modeling_result() -> ModelingResult:
+    command_profile = pd.DataFrame(
+        {
+            "time_s": [0.0, 0.001, 0.002, 0.003],
+            "limited_voltage_v": [0.0, 2.5, -2.5, 0.0],
+        }
+    )
+    return ModelingResult(
+        status="ok",
+        metadata={
+            "demo_only": True,
+            "note": "Demo only / modeling result 아님",
+            "voltage_limit_v": VOLTAGE_LIMIT_V,
+        },
+        warnings=["Demo only / modeling result 아님"],
+        command_profile=command_profile,
+    )
+
+
 def _not_connected(reason: str, *_context: Any) -> ModelingResult:
     return ModelingResult(
         status="not_connected",
