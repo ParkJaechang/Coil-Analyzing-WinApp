@@ -14,6 +14,7 @@ class ProjectState:
     target_config: TargetConfig | None = None
     selected_finite_source: dict[str, Any] | None = None
     selected_continuous_source: dict[str, Any] | None = None
+    selected_actual_drive_source: dict[str, Any] | None = None
     latest_finite_first_result: ModelingResult | None = None
     latest_continuous_first_result: ModelingResult | None = None
     latest_export_result: ModelingResult | None = None

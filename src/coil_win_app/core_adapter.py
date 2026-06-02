@@ -15,7 +15,6 @@ VOLTAGE_LIMIT_V = 10.0
 CORE_REPO = "ParkJaechang/Coil-Analyzing"
 CORE_SHA = "a24d0388ca8d0be0e6a603df62936a3ff956a036"
 
-
 ModelingMode = Literal["finite_startup_aware", "continuous_steady_state"]
 
 
@@ -56,10 +55,11 @@ def load_project_sources(project_path: str | Path) -> ModelingResult:
     root = Path(project_path).expanduser()
     if not root.exists():
         return _not_connected(f"project path does not exist: {root}")
-    counts = _scan_source_counts(root)
+    records = _scan_source_records(root)
+    counts = _count_source_records(records)
     return ModelingResult(
         status="ok",
-        metadata={"project_path": str(root), "source_counts": counts},
+        metadata={"project_path": str(root), "source_counts": counts, "source_records": records},
         warnings=["core adapter is not connected; source scan is filesystem-only"],
     )
 
@@ -173,9 +173,11 @@ def create_demo_modeling_result() -> ModelingResult:
 
 
 def _not_connected(reason: str, *_context: Any) -> ModelingResult:
+    metadata = {"core_repo": CORE_REPO, "core_sha": CORE_SHA}
+    metadata.update(_context_metadata(_context))
     return ModelingResult(
         status="not_connected",
-        metadata={"core_repo": CORE_REPO, "core_sha": CORE_SHA},
+        metadata=metadata,
         warnings=[],
         error_reason=reason,
     )
@@ -185,18 +187,44 @@ def _failed(reason: str) -> ModelingResult:
     return ModelingResult(status="failed", metadata={}, warnings=[], error_reason=reason)
 
 
-def _scan_source_counts(root: Path) -> dict[str, int]:
+def _context_metadata(context: tuple[Any, ...]) -> dict[str, Any]:
+    for value in context:
+        if isinstance(value, dict) and value.get("filename"):
+            return {
+                "selected_source_filename": value["filename"],
+                "selected_source_category": value.get("category"),
+            }
+    return {}
+
+
+def _scan_source_records(root: Path) -> list[dict[str, str]]:
+    records: list[dict[str, str]] = []
+    paths = sorted((path for path in root.rglob("*") if path.is_file()), key=lambda path: path.name.lower())
+    for path in paths:
+        records.append(
+            {
+                "path": str(path),
+                "filename": path.name,
+                "category": _infer_source_category(path.name),
+                "reason": "filename_pattern",
+            }
+        )
+    return records
+
+
+def _count_source_records(records: list[dict[str, str]]) -> dict[str, int]:
     counts = {"finite": 0, "continuous": 0, "actual_drive": 0, "unknown": 0}
-    for path in root.rglob("*"):
-        if not path.is_file():
-            continue
-        name = path.name.lower()
-        if name.startswith("finite_"):
-            counts["finite"] += 1
-        elif name.startswith("continuous_"):
-            counts["continuous"] += 1
-        elif "result" in name or "actual" in name or "validation" in name:
-            counts["actual_drive"] += 1
-        else:
-            counts["unknown"] += 1
+    for record in records:
+        counts[record["category"]] += 1
     return counts
+
+
+def _infer_source_category(filename: str) -> str:
+    name = filename.lower()
+    if "result" in name or "actual" in name or "validation" in name:
+        return "actual_drive"
+    if name.startswith("finite_"):
+        return "finite"
+    if name.startswith("continuous_"):
+        return "continuous"
+    return "unknown"
