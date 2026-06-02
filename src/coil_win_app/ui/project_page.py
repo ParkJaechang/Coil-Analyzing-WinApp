@@ -236,81 +236,52 @@ def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
 
 _TEXT_BOX_STYLE = """
 QTextEdit {
-    background-color: #f7f8fa;
+    background-color: #f8fafc;
     color: #1f2933;
-    border: 1px solid #cbd5e1;
+    border: 1px solid #d9e2ec;
     border-radius: 6px;
     font-family: Consolas;
     font-size: 12px;
 }
 """
 
+_CARD_BACKGROUND = "#f8fafc"
+_CARD_BORDER = "#d9e2ec"
+
 
 def _section_title(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(
-        """
-        QLabel {
-            color: #0f172a;
-            background-color: #dbeafe;
-            border: 1px solid #93c5fd;
-            border-radius: 6px;
-            padding: 6px 8px;
-            font-size: 16px;
-            font-weight: 700;
-        }
-        """
-    )
+    label.setStyleSheet(_card_label_style(color="#2563eb", font_size=16, font_weight=700))
     return label
 
 
 def _subsection_title(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(
-        """
-        QLabel {
-            color: #334155;
-            background-color: #eef2ff;
-            border-radius: 4px;
-            padding: 4px 6px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-        """
-    )
+    label.setStyleSheet(_card_label_style(color="#475569", font_size=13, font_weight=700))
     return label
 
 
 def _info_label(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(
-        """
-        QLabel {
-            color: #111827;
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 4px 6px;
-            font-size: 12px;
-        }
-        """
-    )
+    label.setStyleSheet(_card_label_style(color="#111827", font_size=12, font_weight=400))
     return label
 
 
 def _selected_label_widget(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(
-        """
-        QLabel {
-            color: #064e3b;
-            background-color: #dcfce7;
-            border: 1px solid #86efac;
-            border-radius: 4px;
-            padding: 4px 6px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        """
-    )
+    label.setStyleSheet(_card_label_style(color="#059669", font_size=12, font_weight=700))
     return label
+
+
+def _card_label_style(*, color: str, font_size: int, font_weight: int) -> str:
+    return f"""
+        QLabel {{
+            background-color: {_CARD_BACKGROUND};
+            color: {color};
+            border: 1px solid {_CARD_BORDER};
+            border-radius: 6px;
+            padding: 4px 6px;
+            font-size: {font_size}px;
+            font-weight: {font_weight};
+        }}
+        """

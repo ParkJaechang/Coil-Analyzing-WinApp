@@ -51,8 +51,14 @@ def test_project_page_has_readable_section_styles() -> None:
     assert "_section_title" in source
     assert "_info_label" in source
     assert "_selected_label_widget" in source
-    assert "font-size: 16px" in source
-    assert "font-weight: 700" in source
+    assert "font_size=16" in source
+    assert "font-size: {font_size}px" in source
+    assert "font_weight=700" in source
+    assert "font-weight: {font_weight}" in source
+    assert "_CARD_BACKGROUND" in source
     assert "background-color" in source
+    assert "#dbeafe" not in source
+    assert "#eef2ff" not in source
+    assert "#dcfce7" not in source
     assert "SOURCE SELECTION" in source
     assert "SOURCE INVENTORY" in source
