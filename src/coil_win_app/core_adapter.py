@@ -201,12 +201,13 @@ def _scan_source_records(root: Path) -> list[dict[str, str]]:
     records: list[dict[str, str]] = []
     paths = sorted((path for path in root.rglob("*") if path.is_file()), key=lambda path: path.name.lower())
     for path in paths:
+        category, reason = _infer_source_category(path.name)
         records.append(
             {
                 "path": str(path),
                 "filename": path.name,
-                "category": _infer_source_category(path.name),
-                "reason": "filename_pattern",
+                "category": category,
+                "reason": reason,
             }
         )
     return records
@@ -219,12 +220,18 @@ def _count_source_records(records: list[dict[str, str]]) -> dict[str, int]:
     return counts
 
 
-def _infer_source_category(filename: str) -> str:
+def _infer_source_category(filename: str) -> tuple[str, str]:
     name = filename.lower()
+    if "transient_1st_result" in name or "continuous_1st_result" in name:
+        return "actual_drive", "keyword_match"
     if "result" in name or "actual" in name or "validation" in name:
-        return "actual_drive"
+        return "actual_drive", "keyword_match"
     if name.startswith("finite_"):
-        return "finite"
+        return "finite", "filename_pattern"
     if name.startswith("continuous_"):
-        return "continuous"
-    return "unknown"
+        return "continuous", "filename_pattern"
+    if "finite" in name:
+        return "finite", "keyword_match"
+    if "continuous" in name:
+        return "continuous", "keyword_match"
+    return "unknown", "unknown"

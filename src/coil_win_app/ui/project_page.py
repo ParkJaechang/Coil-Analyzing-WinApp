@@ -21,6 +21,9 @@ def create_project_page(state: ProjectState) -> QWidget:
     finite_combo = QComboBox()
     continuous_combo = QComboBox()
     actual_drive_combo = QComboBox()
+    selected_finite_label = QLabel("selected finite source: none")
+    selected_continuous_label = QLabel("selected continuous source: none")
+    selected_actual_drive_label = QLabel("selected actual-drive source: none")
 
     layout.addWidget(QLabel("Select project and data folders. Files are not modified or deleted."))
     layout.addWidget(project_label)
@@ -35,10 +38,13 @@ def create_project_page(state: ProjectState) -> QWidget:
     layout.addWidget(source_count_label)
     layout.addWidget(QLabel("finite source list"))
     layout.addWidget(finite_combo)
+    layout.addWidget(selected_finite_label)
     layout.addWidget(QLabel("continuous source list"))
     layout.addWidget(continuous_combo)
+    layout.addWidget(selected_continuous_label)
     layout.addWidget(QLabel("actual-drive source list"))
     layout.addWidget(actual_drive_combo)
+    layout.addWidget(selected_actual_drive_label)
     layout.addWidget(QLabel("unknown source list"))
     layout.addWidget(source_list)
 
@@ -47,23 +53,48 @@ def create_project_page(state: ProjectState) -> QWidget:
         if folder:
             state.set_project_path(folder)
             project_label.setText(f"Project folder: {folder}")
-            _refresh_sources(Path(folder), source_count_label, source_list, finite_combo, continuous_combo, actual_drive_combo, state)
+            _refresh_sources(
+                Path(folder),
+                source_count_label,
+                source_list,
+                finite_combo,
+                continuous_combo,
+                actual_drive_combo,
+                selected_finite_label,
+                selected_continuous_label,
+                selected_actual_drive_label,
+                state,
+            )
 
     def choose_data_folder() -> None:
         folder = QFileDialog.getExistingDirectory(widget, "Choose data folder")
         if folder:
             state.set_data_path(folder)
             data_label.setText(f"Data folder: {folder}")
-            _refresh_sources(Path(folder), source_count_label, source_list, finite_combo, continuous_combo, actual_drive_combo, state)
+            _refresh_sources(
+                Path(folder),
+                source_count_label,
+                source_list,
+                finite_combo,
+                continuous_combo,
+                actual_drive_combo,
+                selected_finite_label,
+                selected_continuous_label,
+                selected_actual_drive_label,
+                state,
+            )
 
     def update_finite_selection(index: int) -> None:
         state.selected_finite_source = _combo_record(finite_combo, index)
+        selected_finite_label.setText(_selected_label("selected finite source", state.selected_finite_source))
 
     def update_continuous_selection(index: int) -> None:
         state.selected_continuous_source = _combo_record(continuous_combo, index)
+        selected_continuous_label.setText(_selected_label("selected continuous source", state.selected_continuous_source))
 
     def update_actual_drive_selection(index: int) -> None:
         state.selected_actual_drive_source = _combo_record(actual_drive_combo, index)
+        selected_actual_drive_label.setText(_selected_label("selected actual-drive source", state.selected_actual_drive_source))
 
     project_button.clicked.connect(choose_project_folder)
     data_button.clicked.connect(choose_data_folder)
@@ -80,6 +111,9 @@ def _refresh_sources(
     finite_combo: QComboBox,
     continuous_combo: QComboBox,
     actual_drive_combo: QComboBox,
+    selected_finite_label: QLabel,
+    selected_continuous_label: QLabel,
+    selected_actual_drive_label: QLabel,
     state: ProjectState,
 ) -> None:
     result = load_project_sources(root)
@@ -106,6 +140,9 @@ def _refresh_sources(
     state.selected_finite_source = _combo_record(finite_combo, finite_combo.currentIndex())
     state.selected_continuous_source = _combo_record(continuous_combo, continuous_combo.currentIndex())
     state.selected_actual_drive_source = _combo_record(actual_drive_combo, actual_drive_combo.currentIndex())
+    selected_finite_label.setText(_selected_label("selected finite source", state.selected_finite_source))
+    selected_continuous_label.setText(_selected_label("selected continuous source", state.selected_continuous_source))
+    selected_actual_drive_label.setText(_selected_label("selected actual-drive source", state.selected_actual_drive_source))
     source_list.setPlainText(_format_source_lists(records))
 
 
@@ -142,3 +179,8 @@ def _record_label(record: dict[str, str]) -> str:
         category=record.get("category", "unknown"),
         reason=record.get("reason", "unknown"),
     )
+
+
+def _selected_label(label: str, record: dict[str, Any] | None) -> str:
+    filename = record.get("filename", "none") if record else "none"
+    return f"{label}: {filename}"

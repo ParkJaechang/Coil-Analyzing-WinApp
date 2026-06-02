@@ -40,3 +40,6 @@ def test_project_page_lists_and_selects_sources() -> None:
     assert "selected_finite_source" in source
     assert "selected_continuous_source" in source
     assert "selected_actual_drive_source" in source
+    assert "selected finite source:" in source
+    assert "selected continuous source:" in source
+    assert "selected actual-drive source:" in source
