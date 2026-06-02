@@ -76,16 +76,21 @@ def test_source_metadata_does_not_overwrite_target_config() -> None:
     assert config.cycle_count == 1.0
 
 
-def test_missing_core_dependency_returns_explicit_not_connected() -> None:
+def test_missing_core_dependency_returns_explicit_not_connected(tmp_path) -> None:
     from coil_win_app.core_adapter import build_target_config, run_finite_first_modeling
 
+    source = tmp_path / "finite_sine_1Hz.csv"
+    source.write_text("time_s,limited_voltage_v,HallBz,target_field_mT\n0,0,0,0\n", encoding="utf-8")
     config = build_target_config(
         modeling_input_mode="finite_startup_aware",
         freq_hz=1.0,
         cycle_count=1.0,
         target_peak_field_mT=50.0,
     )
-    result = run_finite_first_modeling(config, source_selection={"source_id": "dummy"})
+    result = run_finite_first_modeling(
+        config,
+        source_selection={"path": str(source), "filename": source.name, "category": "finite"},
+    )
 
     assert result.status == "not_connected"
     assert result.error_reason
@@ -93,8 +98,20 @@ def test_missing_core_dependency_returns_explicit_not_connected() -> None:
 
 
 def test_streamlit_dependency_sha_is_documented() -> None:
+    from coil_win_app.core_adapter import CORE_SHA
+
     doc = Path("docs/winapp_core_dependency.md").read_text(encoding="utf-8")
 
     assert "STREAMLIT_CORE_REPO=ParkJaechang/Coil-Analyzing" in doc
-    assert "STREAMLIT_CORE_SHA=" in doc
-    assert "<확인된 PR61 head SHA>" not in doc
+    assert f"STREAMLIT_CORE_SHA={CORE_SHA}" in doc
+
+
+def test_get_core_version_includes_dependency_status() -> None:
+    from coil_win_app.core_adapter import get_core_version
+
+    version = get_core_version()
+
+    assert "core_sha" in version
+    assert "core_repo" in version
+    assert "adapter_status" in version
+    assert "core_import_available" in version

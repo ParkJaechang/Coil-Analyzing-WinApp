@@ -21,17 +21,19 @@ def test_finite_first_missing_source_is_not_core_not_connected() -> None:
     assert result.metadata["adapter_input_contract_ready"] is False
 
 
-def test_finite_first_not_connected_metadata_includes_target_and_source() -> None:
+def test_finite_first_not_connected_metadata_includes_target_and_source(tmp_path) -> None:
     from coil_win_app.core_adapter import run_finite_first_modeling
 
-    source = {"filename": "finite_sine_1Hz.csv", "path": "C:/data/finite_sine_1Hz.csv", "category": "finite"}
+    path = tmp_path / "finite_sine_1Hz.csv"
+    path.write_text("time_s,limited_voltage_v,HallBz,target_field_mT\n0,0,0,0\n", encoding="utf-8")
+    source = {"filename": path.name, "path": str(path), "category": "finite"}
     result = run_finite_first_modeling(_target_config(), source)
 
     assert result.status == "not_connected"
     assert result.metadata["adapter_input_contract_ready"] is True
     assert result.metadata["target_config"]["target_shape"] == "fixed_rounded_triangle"
     assert result.metadata["selected_source_filename"] == "finite_sine_1Hz.csv"
-    assert result.metadata["selected_source_path"] == "C:/data/finite_sine_1Hz.csv"
+    assert result.metadata["selected_source_path"] == str(path)
     assert result.metadata["selected_source_category"] == "finite"
     assert result.metadata["required_core_api"]
 

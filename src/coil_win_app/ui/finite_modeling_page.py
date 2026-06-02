@@ -84,9 +84,19 @@ def _format_source_summary(label: str, record: dict[str, Any] | None) -> str:
 
 
 def _format_result(label: str, result: ModelingResult) -> str:
-    selected = result.metadata.get("selected_source_filename", "not selected")
-    return (
-        f"{label}: status={result.status}\n"
-        f"error_reason={result.error_reason or 'none'}\n"
-        f"source filename={selected}"
-    )
+    lines = [
+        f"{label}: status={result.status}",
+        f"error_reason={result.error_reason or 'none'}",
+        f"source filename={result.metadata.get('selected_source_filename', 'not selected')}",
+        f"required_core_api={result.metadata.get('required_core_api', 'none')}",
+    ]
+    if result.status == "missing_source":
+        lines.append("Project/Data에서 finite source를 먼저 선택하십시오.")
+    elif result.status == "schema_unavailable":
+        lines.append("missing column groups=" + ", ".join(result.metadata.get("missing_column_groups", [])))
+    elif result.status == "not_connected":
+        lines.append("core API 연결 대기 상태입니다.")
+    elif result.status == "ok" and result.command_profile is not None:
+        lines.append(f"command_profile rows={len(result.command_profile)}")
+        lines.append("voltage source=limited_voltage_v")
+    return "\n".join(lines)
