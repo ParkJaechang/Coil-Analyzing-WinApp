@@ -33,9 +33,9 @@ def test_modeling_pages_pass_selected_source_records() -> None:
 def test_project_page_lists_and_selects_sources() -> None:
     source = open("src/coil_win_app/ui/project_page.py", encoding="utf-8").read()
 
-    assert "finite source list" in source
-    assert "continuous source list" in source
-    assert "actual-drive source list" in source
+    assert "Finite source" in source
+    assert "Continuous source" in source
+    assert "Actual-drive source" in source
     assert "unknown source list" in source
     assert "selected_finite_source" in source
     assert "selected_continuous_source" in source
@@ -43,3 +43,16 @@ def test_project_page_lists_and_selects_sources() -> None:
     assert "selected finite source:" in source
     assert "selected continuous source:" in source
     assert "selected actual-drive source:" in source
+
+
+def test_project_page_has_readable_section_styles() -> None:
+    source = open("src/coil_win_app/ui/project_page.py", encoding="utf-8").read()
+
+    assert "_section_title" in source
+    assert "_info_label" in source
+    assert "_selected_label_widget" in source
+    assert "font-size: 16px" in source
+    assert "font-weight: 700" in source
+    assert "background-color" in source
+    assert "SOURCE SELECTION" in source
+    assert "SOURCE INVENTORY" in source

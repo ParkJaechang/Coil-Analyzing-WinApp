@@ -18,23 +18,26 @@ SECOND_RESULT_DIR = DEFAULT_DATA_DIR / "Second_Result"
 def create_project_page(state: ProjectState) -> QWidget:
     widget = QWidget()
     layout = QVBoxLayout(widget)
-    project_label = QLabel("Project folder: not selected")
-    data_label = QLabel("Data folder: not selected")
-    source_count_label = QLabel("finite: 0 / continuous: 0 / actual-drive: 0 / unknown: 0")
+    project_label = _info_label("Project folder: not selected")
+    data_label = _info_label("Data folder: not selected")
+    source_count_label = _info_label("finite: 0 / continuous: 0 / actual-drive: 0 / unknown: 0")
     source_list = QTextEdit()
     source_list.setReadOnly(True)
+    source_list.setStyleSheet(_TEXT_BOX_STYLE)
     preview_box = QTextEdit()
     preview_box.setReadOnly(True)
-    core_status = QLabel(_format_core_status())
+    preview_box.setStyleSheet(_TEXT_BOX_STYLE)
+    core_status = _info_label(_format_core_status())
 
     finite_combo = QComboBox()
     continuous_combo = QComboBox()
     actual_drive_combo = QComboBox()
-    selected_finite_label = QLabel("selected finite source: none")
-    selected_continuous_label = QLabel("selected continuous source: none")
-    selected_actual_drive_label = QLabel("selected actual-drive source: none")
+    selected_finite_label = _selected_label_widget("selected finite source: none")
+    selected_continuous_label = _selected_label_widget("selected continuous source: none")
+    selected_actual_drive_label = _selected_label_widget("selected actual-drive source: none")
 
-    layout.addWidget(QLabel("Select project and data folders. Files are not modified or deleted."))
+    layout.addWidget(_section_title("PROJECT / DATA"))
+    layout.addWidget(_info_label("Select project and data folders. Files are not modified or deleted."))
     layout.addWidget(project_label)
     layout.addWidget(data_label)
 
@@ -45,20 +48,23 @@ def create_project_page(state: ProjectState) -> QWidget:
     row.addWidget(project_button)
     row.addWidget(data_button)
     layout.addLayout(row)
-    layout.addWidget(source_count_label)
-    layout.addWidget(QLabel("Core dependency status"))
+    layout.addWidget(_section_title("CORE STATUS"))
     layout.addWidget(core_status)
-    layout.addWidget(QLabel("finite source list"))
+    layout.addWidget(_section_title("SOURCE INVENTORY"))
+    layout.addWidget(source_count_label)
+    layout.addWidget(_section_title("SOURCE SELECTION"))
+    layout.addWidget(_subsection_title("Finite source"))
     layout.addWidget(finite_combo)
     layout.addWidget(selected_finite_label)
-    layout.addWidget(QLabel("continuous source list"))
+    layout.addWidget(_subsection_title("Continuous source"))
     layout.addWidget(continuous_combo)
     layout.addWidget(selected_continuous_label)
-    layout.addWidget(QLabel("actual-drive source list"))
+    layout.addWidget(_subsection_title("Actual-drive source"))
     layout.addWidget(actual_drive_combo)
     layout.addWidget(selected_actual_drive_label)
-    layout.addWidget(QLabel("unknown source list"))
+    layout.addWidget(_subsection_title("Full source list / unknown source list"))
     layout.addWidget(source_list)
+    layout.addWidget(_section_title("SOURCE PREVIEW"))
     layout.addWidget(preview_button)
     layout.addWidget(preview_box)
 
@@ -226,3 +232,85 @@ def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
     second_result_dir = data_dir / "Second_Result"
     second_result_dir.mkdir(parents=True, exist_ok=True)
     return second_result_dir
+
+
+_TEXT_BOX_STYLE = """
+QTextEdit {
+    background-color: #f7f8fa;
+    color: #1f2933;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-family: Consolas;
+    font-size: 12px;
+}
+"""
+
+
+def _section_title(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setStyleSheet(
+        """
+        QLabel {
+            color: #0f172a;
+            background-color: #dbeafe;
+            border: 1px solid #93c5fd;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 16px;
+            font-weight: 700;
+        }
+        """
+    )
+    return label
+
+
+def _subsection_title(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setStyleSheet(
+        """
+        QLabel {
+            color: #334155;
+            background-color: #eef2ff;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+        """
+    )
+    return label
+
+
+def _info_label(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setStyleSheet(
+        """
+        QLabel {
+            color: #111827;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 12px;
+        }
+        """
+    )
+    return label
+
+
+def _selected_label_widget(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setStyleSheet(
+        """
+        QLabel {
+            color: #064e3b;
+            background-color: #dcfce7;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        """
+    )
+    return label
