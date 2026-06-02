@@ -10,6 +10,11 @@ from coil_win_app.core_dependency import get_core_dependency_status
 from coil_win_app.project_state import ProjectState
 
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_DATA_DIR = REPO_ROOT / "Data"
+SECOND_RESULT_DIR = DEFAULT_DATA_DIR / "Second_Result"
+
+
 def create_project_page(state: ProjectState) -> QWidget:
     widget = QWidget()
     layout = QVBoxLayout(widget)
@@ -35,7 +40,7 @@ def create_project_page(state: ProjectState) -> QWidget:
 
     row = QHBoxLayout()
     project_button = QPushButton("Choose Project Folder")
-    data_button = QPushButton("Choose Data Folder")
+    data_button = QPushButton("Connect Default Data Folder")
     preview_button = QPushButton("Preview selected source")
     row.addWidget(project_button)
     row.addWidget(data_button)
@@ -75,23 +80,23 @@ def create_project_page(state: ProjectState) -> QWidget:
                 state,
             )
 
-    def choose_data_folder() -> None:
-        folder = QFileDialog.getExistingDirectory(widget, "Choose data folder")
-        if folder:
-            state.set_data_path(folder)
-            data_label.setText(f"Data folder: {folder}")
-            _refresh_sources(
-                Path(folder),
-                source_count_label,
-                source_list,
-                finite_combo,
-                continuous_combo,
-                actual_drive_combo,
-                selected_finite_label,
-                selected_continuous_label,
-                selected_actual_drive_label,
-                state,
-            )
+    def connect_default_data_folder() -> None:
+        DEFAULT_DATA_DIR.mkdir(parents=True, exist_ok=True)
+        second_result = ensure_second_result_folder(DEFAULT_DATA_DIR)
+        state.set_data_path(DEFAULT_DATA_DIR)
+        data_label.setText(f"Data folder: {DEFAULT_DATA_DIR} | second result folder: {second_result.name}")
+        _refresh_sources(
+            DEFAULT_DATA_DIR,
+            source_count_label,
+            source_list,
+            finite_combo,
+            continuous_combo,
+            actual_drive_combo,
+            selected_finite_label,
+            selected_continuous_label,
+            selected_actual_drive_label,
+            state,
+        )
 
     def update_finite_selection(index: int) -> None:
         state.selected_finite_source = _combo_record(finite_combo, index)
@@ -121,7 +126,7 @@ def create_project_page(state: ProjectState) -> QWidget:
         )
 
     project_button.clicked.connect(choose_project_folder)
-    data_button.clicked.connect(choose_data_folder)
+    data_button.clicked.connect(connect_default_data_folder)
     finite_combo.currentIndexChanged.connect(update_finite_selection)
     continuous_combo.currentIndexChanged.connect(update_continuous_selection)
     actual_drive_combo.currentIndexChanged.connect(update_actual_drive_selection)
@@ -215,3 +220,9 @@ def _format_core_status() -> str:
     status = get_core_dependency_status()
     state = "available" if status["core_import_available"] else "not_connected"
     return f"core dependency: {state} | checked={len(status['core_modules_checked'])}"
+
+
+def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
+    second_result_dir = data_dir / "Second_Result"
+    second_result_dir.mkdir(parents=True, exist_ok=True)
+    return second_result_dir

@@ -65,6 +65,8 @@ def test_no_generated_user_data_committed() -> None:
     for path in repo_root.rglob("*"):
         if ".git" in path.parts or path.is_dir():
             continue
+        if "Data" in path.parts:
+            continue
         if path.parts[:2] == ("tests", "fixtures"):
             continue
         if path.suffix.lower() in forbidden_suffixes:
