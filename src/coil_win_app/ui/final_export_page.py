@@ -18,8 +18,10 @@ def create_final_export_page(state: ProjectState) -> QWidget:
     def build_preview_from_latest() -> None:
         result = state.latest_finite_first_result or state.latest_continuous_first_result
         if result is None:
+            status.setText("export unavailable: no latest modeling result")
             preview.setPlainText("No latest modeling result. command_profile is missing.")
             return
+        status.setText(f"latest result status={result.status}; source preview is not a final export candidate")
         export = build_final_lut_export(result)
         state.latest_export_result = export
         _show_export(export, preview, status)

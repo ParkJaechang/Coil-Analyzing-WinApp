@@ -5,7 +5,8 @@ from typing import Any
 
 from PySide6.QtWidgets import QFileDialog, QComboBox, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
-from coil_win_app.core_adapter import load_project_sources
+from coil_win_app.core_adapter import load_project_sources, preview_source_file
+from coil_win_app.core_dependency import get_core_dependency_status
 from coil_win_app.project_state import ProjectState
 
 
@@ -17,6 +18,9 @@ def create_project_page(state: ProjectState) -> QWidget:
     source_count_label = QLabel("finite: 0 / continuous: 0 / actual-drive: 0 / unknown: 0")
     source_list = QTextEdit()
     source_list.setReadOnly(True)
+    preview_box = QTextEdit()
+    preview_box.setReadOnly(True)
+    core_status = QLabel(_format_core_status())
 
     finite_combo = QComboBox()
     continuous_combo = QComboBox()
@@ -32,10 +36,13 @@ def create_project_page(state: ProjectState) -> QWidget:
     row = QHBoxLayout()
     project_button = QPushButton("Choose Project Folder")
     data_button = QPushButton("Choose Data Folder")
+    preview_button = QPushButton("Preview selected source")
     row.addWidget(project_button)
     row.addWidget(data_button)
     layout.addLayout(row)
     layout.addWidget(source_count_label)
+    layout.addWidget(QLabel("Core dependency status"))
+    layout.addWidget(core_status)
     layout.addWidget(QLabel("finite source list"))
     layout.addWidget(finite_combo)
     layout.addWidget(selected_finite_label)
@@ -47,6 +54,8 @@ def create_project_page(state: ProjectState) -> QWidget:
     layout.addWidget(selected_actual_drive_label)
     layout.addWidget(QLabel("unknown source list"))
     layout.addWidget(source_list)
+    layout.addWidget(preview_button)
+    layout.addWidget(preview_box)
 
     def choose_project_folder() -> None:
         folder = QFileDialog.getExistingDirectory(widget, "Choose project folder")
@@ -96,11 +105,27 @@ def create_project_page(state: ProjectState) -> QWidget:
         state.selected_actual_drive_source = _combo_record(actual_drive_combo, index)
         selected_actual_drive_label.setText(_selected_label("selected actual-drive source", state.selected_actual_drive_source))
 
+    def preview_selected_source() -> None:
+        record = state.selected_finite_source or state.selected_continuous_source or state.selected_actual_drive_source
+        result = preview_source_file(record or {})
+        if result.status != "ok" or result.export_frame is None:
+            preview_box.setPlainText(f"source preview failed: status={result.status}; error={result.error_reason or 'unknown'}")
+            return
+        preview_box.setPlainText(
+            "source preview: {filename} | rows={rows} | columns={columns}\n\n{table}".format(
+                filename=result.metadata.get("source_filename", "unknown"),
+                rows=result.metadata.get("row_count_estimate", "unknown"),
+                columns=", ".join(result.metadata.get("columns", [])),
+                table=result.export_frame.to_string(index=False),
+            )
+        )
+
     project_button.clicked.connect(choose_project_folder)
     data_button.clicked.connect(choose_data_folder)
     finite_combo.currentIndexChanged.connect(update_finite_selection)
     continuous_combo.currentIndexChanged.connect(update_continuous_selection)
     actual_drive_combo.currentIndexChanged.connect(update_actual_drive_selection)
+    preview_button.clicked.connect(preview_selected_source)
     return widget
 
 
@@ -184,3 +209,9 @@ def _record_label(record: dict[str, str]) -> str:
 def _selected_label(label: str, record: dict[str, Any] | None) -> str:
     filename = record.get("filename", "none") if record else "none"
     return f"{label}: {filename}"
+
+
+def _format_core_status() -> str:
+    status = get_core_dependency_status()
+    state = "available" if status["core_import_available"] else "not_connected"
+    return f"core dependency: {state} | checked={len(status['core_modules_checked'])}"

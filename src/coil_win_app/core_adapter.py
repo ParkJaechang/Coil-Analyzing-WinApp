@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
@@ -64,6 +64,38 @@ def load_project_sources(project_path: str | Path) -> ModelingResult:
     )
 
 
+def preview_source_file(source_record: dict[str, Any], max_rows: int = 20) -> ModelingResult:
+    if not source_record or not source_record.get("path"):
+        return _missing_source("source path is missing", None, "preview_source_file")
+    path = Path(str(source_record["path"]))
+    if path.suffix.lower() != ".csv":
+        return _failed(f"unsupported file type for preview: {path.suffix or '<none>'}")
+    if not path.exists():
+        return _failed(f"source file does not exist: {path}")
+    size = path.stat().st_size
+    if size > 20_000_000:
+        return _failed(f"source file is too large for preview: {size} bytes")
+    try:
+        frame = pd.read_csv(path)
+    except Exception as exc:
+        return _failed(f"CSV preview failed: {exc}")
+    preview = frame.head(max_rows).copy()
+    return ModelingResult(
+        status="ok",
+        metadata={
+            "result_kind": "source_preview",
+            "source_filename": source_record.get("filename", path.name),
+            "source_category": source_record.get("category", "unknown"),
+            "row_count_estimate": int(len(frame)),
+            "columns": [str(column) for column in frame.columns],
+            "preview_row_count": int(len(preview)),
+            "file_size_bytes": int(size),
+        },
+        warnings=[],
+        export_frame=preview,
+    )
+
+
 def build_target_config(
     *,
     modeling_input_mode: ModelingMode,
@@ -99,7 +131,15 @@ def build_target_config(
 
 
 def run_finite_first_modeling(target_config: TargetConfig, source_selection: dict[str, Any]) -> ModelingResult:
-    return _not_connected("finite first modeling core dependency is not connected", target_config, source_selection)
+    required_api = "field_analysis.finite_first_phase_sync.apply_finite_first_phase_sync_modeling"
+    if not source_selection:
+        return _missing_source("finite source is not selected", target_config, required_api)
+    return _not_connected(
+        "finite first modeling core dependency is not connected",
+        target_config,
+        source_selection,
+        required_api=required_api,
+    )
 
 
 def run_finite_second_modeling(
@@ -107,15 +147,36 @@ def run_finite_second_modeling(
     first_result: ModelingResult,
     actual_drive_source: dict[str, Any],
 ) -> ModelingResult:
-    return _not_connected("finite second modeling core dependency is not connected", target_config, actual_drive_source)
+    required_api = "field_analysis.finite_second_modeling.run_finite_second_modeling"
+    if not actual_drive_source:
+        return _missing_actual_drive_source("actual-drive source is not selected", target_config, required_api)
+    return _not_connected(
+        "finite second modeling core dependency is not connected",
+        target_config,
+        actual_drive_source,
+        required_api=required_api,
+    )
 
 
 def run_continuous_extraction(target_config: TargetConfig, continuous_source: dict[str, Any]) -> ModelingResult:
-    return _not_connected("continuous extraction core dependency is not connected", target_config, continuous_source)
+    required_api = "field_analysis.continuous_steady_state_runtime.run_continuous_steady_state_extraction"
+    if not continuous_source:
+        return _missing_source("continuous source is not selected", target_config, required_api)
+    return _not_connected(
+        "continuous extraction core dependency is not connected",
+        target_config,
+        continuous_source,
+        required_api=required_api,
+    )
 
 
 def run_continuous_first_modeling(target_config: TargetConfig, extraction_result: ModelingResult) -> ModelingResult:
-    return _not_connected("continuous first modeling core dependency is not connected", target_config)
+    required_api = "field_analysis.continuous_first_modeling.run_continuous_first_modeling"
+    return _not_connected(
+        "continuous first modeling core dependency is not connected",
+        target_config,
+        required_api=required_api,
+    )
 
 
 def run_continuous_second_modeling(
@@ -123,10 +184,20 @@ def run_continuous_second_modeling(
     first_result: ModelingResult,
     actual_drive_source: dict[str, Any],
 ) -> ModelingResult:
-    return _not_connected("continuous second modeling core dependency is not connected", target_config, actual_drive_source)
+    required_api = "field_analysis.continuous_second_modeling.run_continuous_second_modeling"
+    if not actual_drive_source:
+        return _missing_actual_drive_source("actual-drive source is not selected", target_config, required_api)
+    return _not_connected(
+        "continuous second modeling core dependency is not connected",
+        target_config,
+        actual_drive_source,
+        required_api=required_api,
+    )
 
 
 def build_final_lut_export(modeling_result: ModelingResult) -> ModelingResult:
+    if modeling_result.metadata.get("result_kind") == "source_preview":
+        return _failed("source preview result is not a final LUT export candidate")
     profile = modeling_result.command_profile
     if profile is None:
         return _failed("command_profile is missing")
@@ -172,29 +243,59 @@ def create_demo_modeling_result() -> ModelingResult:
     )
 
 
-def _not_connected(reason: str, *_context: Any) -> ModelingResult:
+def _not_connected(reason: str, *context: Any, required_api: str = "") -> ModelingResult:
     metadata = {"core_repo": CORE_REPO, "core_sha": CORE_SHA}
-    metadata.update(_context_metadata(_context))
-    return ModelingResult(
-        status="not_connected",
-        metadata=metadata,
-        warnings=[],
-        error_reason=reason,
-    )
+    metadata.update(_context_metadata(context))
+    metadata["required_core_api"] = required_api
+    metadata["adapter_input_contract_ready"] = bool(metadata.get("target_config") and metadata.get("selected_source_filename"))
+    return ModelingResult(status="not_connected", metadata=metadata, warnings=[], error_reason=reason)
 
 
 def _failed(reason: str) -> ModelingResult:
     return ModelingResult(status="failed", metadata={}, warnings=[], error_reason=reason)
 
 
+def _missing_source(reason: str, target_config: TargetConfig | None, required_api: str) -> ModelingResult:
+    metadata = {
+        "core_repo": CORE_REPO,
+        "core_sha": CORE_SHA,
+        "adapter_input_contract_ready": False,
+        "required_core_api": required_api,
+    }
+    if target_config is not None:
+        metadata["target_config"] = asdict(target_config)
+    return ModelingResult(status="missing_source", metadata=metadata, warnings=[], error_reason=reason)
+
+
+def _missing_actual_drive_source(reason: str, target_config: TargetConfig, required_api: str) -> ModelingResult:
+    return ModelingResult(
+        status="missing_actual_drive_source",
+        metadata={
+            "core_repo": CORE_REPO,
+            "core_sha": CORE_SHA,
+            "target_config": asdict(target_config),
+            "adapter_input_contract_ready": False,
+            "required_core_api": required_api,
+        },
+        warnings=[],
+        error_reason=reason,
+    )
+
+
 def _context_metadata(context: tuple[Any, ...]) -> dict[str, Any]:
+    metadata: dict[str, Any] = {}
     for value in context:
+        if isinstance(value, TargetConfig):
+            metadata["target_config"] = asdict(value)
         if isinstance(value, dict) and value.get("filename"):
-            return {
-                "selected_source_filename": value["filename"],
-                "selected_source_category": value.get("category"),
-            }
-    return {}
+            metadata.update(
+                {
+                    "selected_source_filename": value["filename"],
+                    "selected_source_path": value.get("path"),
+                    "selected_source_category": value.get("category"),
+                }
+            )
+    return metadata
 
 
 def _scan_source_records(root: Path) -> list[dict[str, str]]:
