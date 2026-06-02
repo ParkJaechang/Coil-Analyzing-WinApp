@@ -42,8 +42,9 @@ def create_target_config_page(state: ProjectState) -> QWidget:
             return
         state.set_target_config(config)
         summary.setText(
-            "mode={mode} | freq_hz={freq:g} | cycle_count={cycle:g} | target_peak_field_mT={peak:g} | "
-            "target_shape={shape} | field_normalization_mode={norm} | voltage_limit_v={limit:g}".format(
+            "TargetConfig saved | mode={mode} | freq_hz={freq:g} | cycle_count={cycle:g} | "
+            "target_peak_field_mT={peak:g} | target_shape={shape} | "
+            "field_normalization_mode={norm} | voltage_limit_v={limit:g}".format(
                 mode=config.modeling_input_mode,
                 freq=config.freq_hz,
                 cycle=config.cycle_count,
@@ -53,7 +54,7 @@ def create_target_config_page(state: ProjectState) -> QWidget:
                 limit=config.voltage_limit_v,
             )
         )
-        preview.setPlainText(str(config))
+        preview.setPlainText(f"TargetConfig saved\n{config}")
 
     build_button = QPushButton("Build TargetConfig Preview")
     build_button.clicked.connect(update_preview)
