@@ -236,7 +236,7 @@ def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
 
 _TEXT_BOX_STYLE = """
 QTextEdit {
-    color: #1f2933;
+    color: #e5e7eb;
     font-family: Consolas;
     font-size: 12px;
 }
@@ -245,25 +245,25 @@ QTextEdit {
 
 def _section_title(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(_card_label_style(color="#2563eb", font_size=16, font_weight=700))
+    label.setStyleSheet(_card_label_style(color="#93c5fd", font_size=16, font_weight=700))
     return label
 
 
 def _subsection_title(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(_card_label_style(color="#475569", font_size=13, font_weight=700))
+    label.setStyleSheet(_card_label_style(color="#cbd5e1", font_size=13, font_weight=700))
     return label
 
 
 def _info_label(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(_card_label_style(color="#111827", font_size=12, font_weight=400))
+    label.setStyleSheet(_card_label_style(color="#e5e7eb", font_size=12, font_weight=400))
     return label
 
 
 def _selected_label_widget(text: str) -> QLabel:
     label = QLabel(text)
-    label.setStyleSheet(_card_label_style(color="#059669", font_size=12, font_weight=700))
+    label.setStyleSheet(_card_label_style(color="#86efac", font_size=12, font_weight=700))
     return label
 
 

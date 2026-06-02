@@ -60,3 +60,9 @@ def test_project_page_has_readable_section_styles() -> None:
     assert "border:" not in source
     assert "SOURCE SELECTION" in source
     assert "SOURCE INVENTORY" in source
+    assert "#e5e7eb" in source
+    assert "#93c5fd" in source
+    assert "#86efac" in source
+    assert "#111827" not in source
+    assert "#1f2933" not in source
+    assert "#475569" not in source
