@@ -236,17 +236,11 @@ def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
 
 _TEXT_BOX_STYLE = """
 QTextEdit {
-    background-color: #f8fafc;
     color: #1f2933;
-    border: 1px solid #d9e2ec;
-    border-radius: 6px;
     font-family: Consolas;
     font-size: 12px;
 }
 """
-
-_CARD_BACKGROUND = "#f8fafc"
-_CARD_BORDER = "#d9e2ec"
 
 
 def _section_title(text: str) -> QLabel:
@@ -276,10 +270,7 @@ def _selected_label_widget(text: str) -> QLabel:
 def _card_label_style(*, color: str, font_size: int, font_weight: int) -> str:
     return f"""
         QLabel {{
-            background-color: {_CARD_BACKGROUND};
             color: {color};
-            border: 1px solid {_CARD_BORDER};
-            border-radius: 6px;
             padding: 4px 6px;
             font-size: {font_size}px;
             font-weight: {font_weight};
