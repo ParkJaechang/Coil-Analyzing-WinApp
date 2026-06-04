@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib
+import os
 import sys
 from types import ModuleType
+from pathlib import Path
 from typing import Any
 
 from coil_win_app.core_adapter import CORE_REPO, CORE_SHA
@@ -24,8 +26,40 @@ FORBIDDEN_CORE_MODULES = {
     "field_analysis.app_ui_snapshot",
 }
 
+_CONFIGURED_CORE_PATH: str | None = None
+
+
+def configure_core_path(path: str | Path) -> dict[str, Any]:
+    candidate = Path(path).expanduser()
+    if not candidate.exists():
+        return _failed_status("core_path", f"core path does not exist: {candidate}") | {
+            "configured_core_path": None,
+            "added_sys_path": None,
+        }
+    import_root = _resolve_import_root(candidate)
+    if import_root is None:
+        return _failed_status("core_path", f"field_analysis package was not found under: {candidate}") | {
+            "configured_core_path": None,
+            "added_sys_path": None,
+        }
+    import_path = str(import_root)
+    if import_path not in sys.path:
+        sys.path.insert(0, import_path)
+    importlib.invalidate_caches()
+    global _CONFIGURED_CORE_PATH
+    _CONFIGURED_CORE_PATH = import_path
+    return {
+        "status": "ok",
+        "module_name": "core_path",
+        "module": None,
+        "core_import_error": "",
+        "configured_core_path": import_path,
+        "added_sys_path": import_path,
+    }
+
 
 def resolve_core_dependency() -> dict[str, Any]:
+    _configure_from_environment_once()
     checked: list[str] = []
     errors: list[str] = []
     available: list[str] = []
@@ -46,6 +80,9 @@ def resolve_core_dependency() -> dict[str, Any]:
         "core_modules_checked": checked,
         "missing_core_modules": missing,
         "optional_core_modules_available": available,
+        "configured_core_path": _CONFIGURED_CORE_PATH,
+        "added_sys_path": _CONFIGURED_CORE_PATH,
+        "streamlit_imported": "streamlit" in sys.modules,
     }
 
 
@@ -79,3 +116,23 @@ def _failed_status(module_name: str, reason: str) -> dict[str, Any]:
         "module": None,
         "core_import_error": reason,
     }
+
+
+def _configure_from_environment_once() -> None:
+    if _CONFIGURED_CORE_PATH:
+        return
+    env_path = os.environ.get("COIL_ANALYZING_CORE_SRC")
+    if env_path:
+        configure_core_path(env_path)
+
+
+def _resolve_import_root(candidate: Path) -> Path | None:
+    if (candidate / "field_analysis" / "__init__.py").is_file():
+        return candidate
+    if (candidate / "src" / "field_analysis" / "__init__.py").is_file():
+        return candidate / "src"
+    if candidate.name.lower() == "src" and (candidate / "field_analysis").is_dir():
+        return candidate
+    if (candidate / "field_analysis").is_dir():
+        return candidate
+    return None

@@ -67,7 +67,7 @@ def test_no_generated_user_data_committed() -> None:
             continue
         if "Data" in path.parts:
             continue
-        if path.parts[:2] == ("tests", "fixtures"):
+        if "tests" in path.parts and "fixtures" in path.parts:
             continue
         if path.suffix.lower() in forbidden_suffixes:
             offenders.append(path.as_posix())

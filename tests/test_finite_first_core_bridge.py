@@ -115,6 +115,31 @@ def test_finite_first_metadata_key_contract() -> None:
     assert "positive_peak_error_ratio" in optional
 
 
+def test_finite_first_bridge_wraps_tuple_core_output(tmp_path, monkeypatch) -> None:
+    from coil_win_app.core_adapter import run_finite_first_modeling
+
+    path = tmp_path / "finite_sine_1Hz.csv"
+    path.write_text("time_s,limited_voltage_v,HallBz,target_field_mT\n0,0,0,0\n", encoding="utf-8")
+    module = types.ModuleType("field_analysis.finite_first_phase_sync")
+
+    def apply_finite_first_phase_sync_modeling(command_profile, **_kwargs):
+        return (
+            pd.DataFrame({"time_s": command_profile["time_s"], "limited_voltage_v": [1.5]}),
+            {"finite_first_modeling_status": "ok", "field_per_volt_mT_per_v": 7.0},
+        )
+
+    module.apply_finite_first_phase_sync_modeling = apply_finite_first_phase_sync_modeling
+    monkeypatch.setitem(sys.modules, "field_analysis", types.ModuleType("field_analysis"))
+    monkeypatch.setitem(sys.modules, "field_analysis.finite_first_phase_sync", module)
+
+    result = run_finite_first_modeling(_target_config(), {"path": str(path), "filename": path.name, "category": "finite"})
+
+    assert result.status == "ok"
+    assert result.metadata["field_per_volt_mT_per_v"] == 7.0
+    assert result.command_profile is not None
+    assert result.command_profile["limited_voltage_v"].tolist() == [1.5]
+
+
 def test_finite_first_bridge_schema_unavailable_blocks_core(tmp_path) -> None:
     from coil_win_app.core_adapter import run_finite_first_modeling
 

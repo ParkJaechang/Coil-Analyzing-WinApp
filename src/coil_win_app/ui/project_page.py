@@ -6,7 +6,7 @@ from typing import Any
 from PySide6.QtWidgets import QFileDialog, QComboBox, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from coil_win_app.core_adapter import load_project_sources, preview_source_file
-from coil_win_app.core_dependency import get_core_dependency_status
+from coil_win_app.core_dependency import configure_core_path, get_core_dependency_status
 from coil_win_app.project_state import ProjectState
 
 
@@ -50,6 +50,8 @@ def create_project_page(state: ProjectState) -> QWidget:
     layout.addLayout(row)
     layout.addWidget(_section_title("CORE STATUS"))
     layout.addWidget(core_status)
+    core_button = QPushButton("Choose Core Source Folder")
+    layout.addWidget(core_button)
     layout.addWidget(_section_title("SOURCE INVENTORY"))
     layout.addWidget(source_count_label)
     layout.addWidget(_section_title("SOURCE SELECTION"))
@@ -85,6 +87,17 @@ def create_project_page(state: ProjectState) -> QWidget:
                 selected_actual_drive_label,
                 state,
             )
+
+    def choose_core_folder() -> None:
+        folder = QFileDialog.getExistingDirectory(widget, "Choose Streamlit core repo root or src folder")
+        if not folder:
+            return
+        result = configure_core_path(folder)
+        if result["status"] == "ok":
+            state.set_core_src_path(result["added_sys_path"])
+        else:
+            state.add_status(f"core path failed: {result['core_import_error']}")
+        core_status.setText(_format_core_status())
 
     def connect_default_data_folder() -> None:
         DEFAULT_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -132,6 +145,7 @@ def create_project_page(state: ProjectState) -> QWidget:
         )
 
     project_button.clicked.connect(choose_project_folder)
+    core_button.clicked.connect(choose_core_folder)
     data_button.clicked.connect(connect_default_data_folder)
     finite_combo.currentIndexChanged.connect(update_finite_selection)
     continuous_combo.currentIndexChanged.connect(update_continuous_selection)
@@ -225,7 +239,14 @@ def _selected_label(label: str, record: dict[str, Any] | None) -> str:
 def _format_core_status() -> str:
     status = get_core_dependency_status()
     state = "available" if status["core_import_available"] else "not_connected"
-    return f"core dependency: {state} | checked={len(status['core_modules_checked'])}"
+    missing = status.get("missing_core_modules", [])
+    added_path = status.get("added_sys_path") or "none"
+    streamlit = "yes" if status.get("streamlit_imported") else "no"
+    return (
+        f"core dependency: {state} | expected SHA={status.get('core_sha')} | "
+        f"checked={len(status['core_modules_checked'])} | missing={len(missing)} | "
+        f"added sys.path={added_path} | streamlit imported={streamlit}"
+    )
 
 
 def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:

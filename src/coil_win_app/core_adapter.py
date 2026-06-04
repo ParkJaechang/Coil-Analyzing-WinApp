@@ -262,11 +262,18 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
     except Exception as exc:
         imported = {"status": "failed", "core_import_error": str(exc), "module": None}
     if imported["status"] != "ok":
+        try:
+            from coil_win_app.core_dependency import get_core_dependency_status
+
+            dependency_status = get_core_dependency_status()
+        except Exception:
+            dependency_status = {}
         return _not_connected(
             f"finite first modeling core dependency is not connected: {imported['core_import_error']}",
             target_config,
             source_selection,
             required_api=FINITE_FIRST_REQUIRED_API,
+            extra_metadata=dependency_status,
         )
     apply_fn = getattr(imported["module"], "apply_finite_first_phase_sync_modeling", None)
     if apply_fn is None:
@@ -356,6 +363,16 @@ def _wrap_core_output(output: Any) -> ModelingResult:
         return output
     if isinstance(output, pd.DataFrame):
         return ModelingResult(status="ok", metadata={}, warnings=[], command_profile=output)
+    if isinstance(output, tuple) and len(output) >= 2:
+        profile, metadata = output[0], output[1]
+        warnings = output[2] if len(output) >= 3 else []
+        if isinstance(profile, pd.DataFrame) and isinstance(metadata, dict):
+            return ModelingResult(
+                status=str(metadata.get("status", "ok")),
+                metadata=dict(metadata),
+                warnings=list(warnings) if isinstance(warnings, list) else [],
+                command_profile=profile,
+            )
     if isinstance(output, dict):
         profile = output.get("command_profile")
         if profile is None and isinstance(output.get("command_profile_df"), pd.DataFrame):
@@ -365,8 +382,9 @@ def _wrap_core_output(output: Any) -> ModelingResult:
     return _failed(f"finite first core returned unsupported type: {type(output).__name__}")
 
 
-def _not_connected(reason: str, *context: Any, required_api: str = "") -> ModelingResult:
+def _not_connected(reason: str, *context: Any, required_api: str = "", extra_metadata: dict[str, Any] | None = None) -> ModelingResult:
     metadata = _input_metadata_from_context(context, required_api)
+    metadata.update(extra_metadata or {})
     return ModelingResult(status="not_connected", metadata=metadata, warnings=[], error_reason=reason)
 
 

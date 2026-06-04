@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import pandas as pd
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from coil_win_app.core_adapter import (
@@ -101,11 +102,17 @@ def _format_result(label: str, result: ModelingResult) -> str:
         lines.append("Project/Data에서 finite source를 먼저 선택하십시오.")
     elif result.status == "schema_unavailable":
         lines.append("missing column groups=" + ", ".join(result.metadata.get("missing_column_groups", [])))
+        lines.extend(_format_schema_candidates(result.metadata.get("required_column_candidates", {})))
     elif result.status == "not_connected":
         lines.append("core API 연결 대기 상태입니다.")
+        lines.append(f"core import available={result.metadata.get('core_import_available', 'unknown')}")
+        missing = result.metadata.get("missing_core_modules", [])
+        lines.append("missing core modules=" + (", ".join(missing) if missing else "none"))
+        lines.append(f"added sys.path={result.metadata.get('added_sys_path') or 'none'}")
     elif result.status == "ok" and result.command_profile is not None:
         lines.append(f"command_profile rows={len(result.command_profile)}")
         lines.append("voltage source=limited_voltage_v")
+        lines.append(f"limited_voltage_v peak={_limited_voltage_peak(result)}")
         lines.extend(_format_finite_first_metadata(result))
     return "\n".join(lines)
 
@@ -115,3 +122,23 @@ def _format_finite_first_metadata(result: ModelingResult) -> list[str]:
     for key in finite_first_required_metadata_keys() + finite_first_optional_metadata_keys() + ["clipping_fraction"]:
         lines.append(f"{key}={result.metadata.get(key, 'not available')}")
     return lines
+
+
+def _format_schema_candidates(candidates: object) -> list[str]:
+    if not isinstance(candidates, dict) or not candidates:
+        return []
+    lines = ["accepted column candidates:"]
+    for group, names in candidates.items():
+        if isinstance(names, list):
+            lines.append(f"{group}: {', '.join(str(name) for name in names)}")
+    return lines
+
+
+def _limited_voltage_peak(result: ModelingResult) -> str:
+    profile = result.command_profile
+    if profile is None or "limited_voltage_v" not in profile.columns:
+        return "not available"
+    values = pd.to_numeric(profile["limited_voltage_v"], errors="coerce").abs().dropna()
+    if values.empty:
+        return "not available"
+    return f"{float(values.max()):g}"
