@@ -49,7 +49,22 @@ def test_finite_first_bridge_calls_fake_core_and_exports(tmp_path, monkeypatch) 
     def apply_finite_first_phase_sync_modeling(command_profile, **kwargs):
         calls["columns"] = list(command_profile.columns)
         calls["kwargs"] = kwargs
-        return pd.DataFrame({"time_s": command_profile["time_s"], "limited_voltage_v": [0.0, 2.0]})
+        return {
+            "status": "ok",
+            "metadata": {
+                "finite_first_modeling_status": "ok",
+                "phase_sync_method": "peak_pair_midpoint_to_target_zero_crossing",
+                "phase_sync_alignment_anchor": "midpoint_to_zero_crossing",
+                "phase_delay_s": 0.012,
+                "measured_field_scale_to_target_mT": 1.2,
+                "field_per_volt_mT_per_v": 8.5,
+                "residual_to_voltage_conversion_basis": "field_per_volt_response",
+                "positive_peak_error_ratio": 0.03,
+                "negative_peak_error_ratio": -0.02,
+                "peak_to_peak_error_ratio": 0.01,
+            },
+            "command_profile": pd.DataFrame({"time_s": command_profile["time_s"], "limited_voltage_v": [0.0, 2.0]}),
+        }
 
     module.apply_finite_first_phase_sync_modeling = apply_finite_first_phase_sync_modeling
     monkeypatch.setitem(sys.modules, "field_analysis", types.ModuleType("field_analysis"))
@@ -63,6 +78,10 @@ def test_finite_first_bridge_calls_fake_core_and_exports(tmp_path, monkeypatch) 
 
     assert result.status == "ok"
     assert result.metadata["core_bridge_used"] is True
+    assert result.metadata["finite_first_bridge_version"] == "phase_synced_field_per_volt_aware"
+    assert result.metadata["field_per_volt_mT_per_v"] == 8.5
+    assert result.metadata["positive_peak_error_ratio"] == 0.03
+    assert result.metadata["final_voltage_limit_v"] == 10.0
     assert result.metadata["selected_source_filename"] == path.name
     assert result.command_profile is not None
     assert list(result.command_profile.columns) == ["time_s", "limited_voltage_v"]
@@ -70,6 +89,19 @@ def test_finite_first_bridge_calls_fake_core_and_exports(tmp_path, monkeypatch) 
     assert calls["kwargs"]["cycle_count"] == 1.0
     assert export.status == "ok"
     assert list(export.export_frame.columns) == ["sample_index", "time_s", "voltage_v"]
+
+
+def test_finite_first_metadata_key_contract() -> None:
+    from coil_win_app.core_adapter import finite_first_optional_metadata_keys, finite_first_required_metadata_keys
+
+    required = finite_first_required_metadata_keys()
+    optional = finite_first_optional_metadata_keys()
+
+    assert "field_per_volt_mT_per_v" in required
+    assert "residual_to_voltage_conversion_basis" in required
+    assert "final_voltage_limit_v" in required
+    assert "phase_sync_midpoint_time_s" in optional
+    assert "positive_peak_error_ratio" in optional
 
 
 def test_finite_first_bridge_schema_unavailable_blocks_core(tmp_path) -> None:

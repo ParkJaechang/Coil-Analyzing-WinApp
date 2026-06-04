@@ -4,7 +4,14 @@ from typing import Any
 
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
-from coil_win_app.core_adapter import ModelingResult, TargetConfig, run_finite_first_modeling, run_finite_second_modeling
+from coil_win_app.core_adapter import (
+    ModelingResult,
+    TargetConfig,
+    finite_first_optional_metadata_keys,
+    finite_first_required_metadata_keys,
+    run_finite_first_modeling,
+    run_finite_second_modeling,
+)
 from coil_win_app.project_state import ProjectState
 
 
@@ -99,4 +106,12 @@ def _format_result(label: str, result: ModelingResult) -> str:
     elif result.status == "ok" and result.command_profile is not None:
         lines.append(f"command_profile rows={len(result.command_profile)}")
         lines.append("voltage source=limited_voltage_v")
+        lines.extend(_format_finite_first_metadata(result))
     return "\n".join(lines)
+
+
+def _format_finite_first_metadata(result: ModelingResult) -> list[str]:
+    lines = ["finite first compatibility metadata:"]
+    for key in finite_first_required_metadata_keys() + finite_first_optional_metadata_keys() + ["clipping_fraction"]:
+        lines.append(f"{key}={result.metadata.get(key, 'not available')}")
+    return lines

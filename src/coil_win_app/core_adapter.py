@@ -60,6 +60,32 @@ def get_core_version() -> dict[str, str]:
     }
 
 
+def finite_first_required_metadata_keys() -> list[str]:
+    return [
+        "finite_first_modeling_status",
+        "phase_sync_method",
+        "phase_delay_s",
+        "measured_field_scale_to_target_mT",
+        "field_per_volt_mT_per_v",
+        "residual_to_voltage_conversion_basis",
+        "final_voltage_limit_v",
+    ]
+
+
+def finite_first_optional_metadata_keys() -> list[str]:
+    return [
+        "phase_sync_alignment_anchor",
+        "phase_sync_midpoint_time_s",
+        "phase_sync_target_zero_crossing_time_s",
+        "error_evaluation_start_cycle",
+        "error_evaluation_end_cycle",
+        "error_evaluation_finite_ratio",
+        "positive_peak_error_ratio",
+        "negative_peak_error_ratio",
+        "peak_to_peak_error_ratio",
+    ]
+
+
 def load_project_sources(project_path: str | Path) -> ModelingResult:
     root = Path(project_path).expanduser()
     if not root.exists():
@@ -128,17 +154,30 @@ def preview_source_file(source_record: dict[str, Any], max_rows: int = 20) -> Mo
 def validate_finite_first_input_frame(frame: pd.DataFrame) -> dict[str, Any]:
     candidates = {
         "time": ["time_s", "TimeMs"],
-        "voltage": ["limited_voltage_v", "voltage_v", "command_voltage_v", "Voltage1_V", "raw_voltage_v"],
+        "voltage": [
+            "limited_voltage_v",
+            "voltage_v",
+            "command_voltage_v",
+            "Voltage1_V",
+            "raw_voltage_v",
+            "finite_first_input_lut_voltage_v",
+        ],
         "measured_field": [
             "finite_first_actual_measured_field_mT",
             "measured_field_effective_mT",
             "measured_field_normalized_mT",
+            "raw_hallbz_mT",
             "HallBz",
             "HallZ",
             "bz_mT",
             "Bz_mT",
         ],
-        "target_field": ["physical_target_output_mT", "target_field_mT", "normalized_physical_target_output_mT"],
+        "target_field": [
+            "physical_target_output_mT",
+            "target_field_mT",
+            "normalized_physical_target_output_mT",
+            "aligned_target_output",
+        ],
     }
     resolved: dict[str, str] = {}
     missing: list[str] = []
@@ -247,6 +286,8 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
     if result.status == "ok":
         result.metadata.update(_input_metadata(target_config, source_selection, FINITE_FIRST_REQUIRED_API, ready=True))
         result.metadata["core_bridge_used"] = True
+        result.metadata["finite_first_bridge_version"] = "phase_synced_field_per_volt_aware"
+        result.metadata.setdefault("final_voltage_limit_v", target_config.voltage_limit_v)
     return result
 
 

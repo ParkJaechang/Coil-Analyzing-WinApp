@@ -11,6 +11,8 @@ from coil_win_app.core_adapter import CORE_REPO, CORE_SHA
 REQUIRED_CORE_MODULES = [
     "field_analysis.final_modeled_lut",
     "field_analysis.finite_first_phase_sync",
+    "field_analysis.first_modeling_voltage_response",
+    "field_analysis.modeling_error_metrics",
     "field_analysis.finite_second_modeling",
     "field_analysis.continuous_steady_state_schema",
     "field_analysis.continuous_first_modeling",
@@ -26,17 +28,24 @@ FORBIDDEN_CORE_MODULES = {
 def resolve_core_dependency() -> dict[str, Any]:
     checked: list[str] = []
     errors: list[str] = []
+    available: list[str] = []
+    missing: list[str] = []
     for module_name in REQUIRED_CORE_MODULES:
         checked.append(module_name)
         result = import_core_module(module_name)
         if result["status"] != "ok":
             errors.append(f"{module_name}: {result['core_import_error']}")
+            missing.append(module_name)
+        else:
+            available.append(module_name)
     return {
         "core_repo": CORE_REPO,
         "core_sha": CORE_SHA,
         "core_import_available": not errors,
         "core_import_error": "; ".join(errors),
         "core_modules_checked": checked,
+        "missing_core_modules": missing,
+        "optional_core_modules_available": available,
     }
 
 

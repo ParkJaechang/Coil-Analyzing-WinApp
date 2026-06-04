@@ -13,6 +13,10 @@ def test_core_dependency_resolver_returns_structured_status() -> None:
     assert isinstance(status["core_import_available"], bool)
     assert isinstance(status["core_import_error"], str)
     assert status["core_modules_checked"] == REQUIRED_CORE_MODULES
+    assert isinstance(status["missing_core_modules"], list)
+    assert isinstance(status["optional_core_modules_available"], list)
+    assert "field_analysis.first_modeling_voltage_response" in status["core_modules_checked"]
+    assert "field_analysis.modeling_error_metrics" in status["core_modules_checked"]
 
 
 def test_core_dependency_resolver_does_not_import_streamlit() -> None:
