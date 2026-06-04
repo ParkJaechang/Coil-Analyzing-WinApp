@@ -1,0 +1,4 @@
+time_s,limited_voltage_v,raw_hallbz_mT,physical_target_output_mT
+0.0,0.0,0.0,0.0
+0.1,1.0,-10.0,10.0
+0.2,-1.0,10.0,-10.0
