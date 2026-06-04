@@ -31,7 +31,7 @@ def test_configure_core_path_accepts_repo_root_and_reports_added_path(tmp_path) 
 
 
 def test_configure_core_path_accepts_src_path(tmp_path) -> None:
-    from coil_win_app.core_dependency import configure_core_path
+    from coil_win_app.core_dependency import configure_core_path, get_configured_core_paths
 
     src = tmp_path / "src"
     (src / "field_analysis").mkdir(parents=True)
@@ -41,6 +41,7 @@ def test_configure_core_path_accepts_src_path(tmp_path) -> None:
 
     assert result["status"] == "ok"
     assert result["added_sys_path"] == str(src)
+    assert str(src) in get_configured_core_paths()
 
 
 def test_core_dependency_resolver_still_does_not_import_streamlit(tmp_path) -> None:
