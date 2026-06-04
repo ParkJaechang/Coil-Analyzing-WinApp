@@ -55,10 +55,15 @@ def test_finite_first_bridge_calls_fake_core_and_exports(tmp_path, monkeypatch) 
                 "finite_first_modeling_status": "ok",
                 "phase_sync_method": "peak_pair_midpoint_to_target_zero_crossing",
                 "phase_sync_alignment_anchor": "midpoint_to_zero_crossing",
+                "phase_sync_peak_reference": "positive_negative_peak_pair",
+                "phase_sync_midpoint_left_peak_time_s": 0.25,
+                "phase_sync_midpoint_right_peak_time_s": 0.75,
                 "phase_delay_s": 0.012,
                 "measured_field_scale_to_target_mT": 1.2,
                 "field_per_volt_mT_per_v": 8.5,
+                "voltage_per_field_v_per_mT": 0.117647,
                 "residual_to_voltage_conversion_basis": "field_per_volt_response",
+                "correction_delta_mode": "residual_div_field_per_volt",
                 "positive_peak_error_ratio": 0.03,
                 "negative_peak_error_ratio": -0.02,
                 "peak_to_peak_error_ratio": 0.01,
@@ -80,6 +85,8 @@ def test_finite_first_bridge_calls_fake_core_and_exports(tmp_path, monkeypatch) 
     assert result.metadata["core_bridge_used"] is True
     assert result.metadata["finite_first_bridge_version"] == "phase_synced_field_per_volt_aware"
     assert result.metadata["field_per_volt_mT_per_v"] == 8.5
+    assert result.metadata["voltage_per_field_v_per_mT"] == 0.117647
+    assert result.metadata["correction_delta_mode"] == "residual_div_field_per_volt"
     assert result.metadata["positive_peak_error_ratio"] == 0.03
     assert result.metadata["final_voltage_limit_v"] == 10.0
     assert result.metadata["selected_source_filename"] == path.name
@@ -99,8 +106,12 @@ def test_finite_first_metadata_key_contract() -> None:
 
     assert "field_per_volt_mT_per_v" in required
     assert "residual_to_voltage_conversion_basis" in required
+    assert "correction_delta_mode" in required
     assert "final_voltage_limit_v" in required
+    assert "phase_sync_peak_reference" in optional
     assert "phase_sync_midpoint_time_s" in optional
+    assert "phase_sync_midpoint_left_peak_time_s" in optional
+    assert "phase_sync_midpoint_right_peak_time_s" in optional
     assert "positive_peak_error_ratio" in optional
 
 

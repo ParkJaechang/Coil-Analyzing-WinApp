@@ -67,7 +67,9 @@ def finite_first_required_metadata_keys() -> list[str]:
         "phase_delay_s",
         "measured_field_scale_to_target_mT",
         "field_per_volt_mT_per_v",
+        "voltage_per_field_v_per_mT",
         "residual_to_voltage_conversion_basis",
+        "correction_delta_mode",
         "final_voltage_limit_v",
     ]
 
@@ -75,7 +77,10 @@ def finite_first_required_metadata_keys() -> list[str]:
 def finite_first_optional_metadata_keys() -> list[str]:
     return [
         "phase_sync_alignment_anchor",
+        "phase_sync_peak_reference",
         "phase_sync_midpoint_time_s",
+        "phase_sync_midpoint_left_peak_time_s",
+        "phase_sync_midpoint_right_peak_time_s",
         "phase_sync_target_zero_crossing_time_s",
         "error_evaluation_start_cycle",
         "error_evaluation_end_cycle",
