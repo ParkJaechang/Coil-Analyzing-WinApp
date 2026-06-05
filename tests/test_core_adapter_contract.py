@@ -102,6 +102,7 @@ def test_streamlit_dependency_sha_is_documented() -> None:
 
     doc = Path("docs/winapp_core_dependency.md").read_text(encoding="utf-8")
 
+    assert CORE_SHA == "b3c1103825c9c30f2db9ea14153959ffc2fe300e"
     assert "STREAMLIT_CORE_REPO=ParkJaechang/Coil-Analyzing" in doc
     assert f"STREAMLIT_CORE_SHA={CORE_SHA}" in doc
 

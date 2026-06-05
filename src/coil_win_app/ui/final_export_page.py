@@ -29,7 +29,7 @@ def create_final_export_page(state: ProjectState) -> QWidget:
     def build_demo_preview() -> None:
         result = create_demo_modeling_result()
         result.metadata["demo_only"] = True  # demo_only=True
-        export = build_final_lut_export(result)
+        export = build_final_lut_export(result, allow_demo=True)
         export.metadata["demo_only"] = True
         state.latest_export_result = export
         _show_export(export, preview, status)

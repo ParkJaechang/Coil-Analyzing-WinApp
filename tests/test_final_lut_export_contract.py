@@ -50,11 +50,64 @@ def test_demo_modeling_result_exports_with_exact_columns() -> None:
     from coil_win_app.core_adapter import build_final_lut_export, create_demo_modeling_result
 
     result = create_demo_modeling_result()
-    export = build_final_lut_export(result)
+    blocked = build_final_lut_export(result)
+    export = build_final_lut_export(result, allow_demo=True)
 
     assert result.metadata["demo_only"] is True
+    assert blocked.status == "failed"
+    assert "demo" in str(blocked.error_reason)
     assert export.status == "ok"
     assert list(export.export_frame.columns) == ["sample_index", "time_s", "voltage_v"]
+
+
+def test_final_lut_export_rejects_non_ok_and_source_dataframe_results() -> None:
+    from coil_win_app.core_adapter import ModelingResult, build_final_lut_export
+
+    profile = pd.DataFrame({"time_s": [0.0], "limited_voltage_v": [1.0]})
+
+    assert build_final_lut_export(ModelingResult(status="failed", metadata={}, warnings=[], command_profile=profile)).status == "failed"
+    assert (
+        build_final_lut_export(
+            ModelingResult(status="ok", metadata={"result_kind": "source_dataframe"}, warnings=[], command_profile=profile)
+        ).status
+        == "failed"
+    )
+
+
+def test_final_lut_export_rejects_bad_values_and_non_monotonic_time() -> None:
+    from coil_win_app.core_adapter import ModelingResult, build_final_lut_export
+
+    non_finite = ModelingResult(
+        status="ok",
+        metadata={},
+        warnings=[],
+        command_profile=pd.DataFrame({"time_s": [0.0, float("nan")], "limited_voltage_v": [0.0, 1.0]}),
+    )
+    non_monotonic = ModelingResult(
+        status="ok",
+        metadata={},
+        warnings=[],
+        command_profile=pd.DataFrame({"time_s": [0.1, 0.0], "limited_voltage_v": [0.0, 1.0]}),
+    )
+
+    assert build_final_lut_export(non_finite).status == "failed"
+    assert build_final_lut_export(non_monotonic).status == "failed"
+
+
+def test_final_lut_export_rejects_non_ok_finite_first_metadata() -> None:
+    from coil_win_app.core_adapter import ModelingResult, build_final_lut_export
+
+    result = ModelingResult(
+        status="ok",
+        metadata={"finite_first_modeling_status": "peak_detection_failed"},
+        warnings=[],
+        command_profile=pd.DataFrame({"time_s": [0.0], "limited_voltage_v": [1.0]}),
+    )
+
+    export = build_final_lut_export(result)
+
+    assert export.status == "failed"
+    assert "peak_detection_failed" in str(export.error_reason)
 
 
 def test_no_generated_user_data_committed() -> None:

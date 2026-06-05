@@ -9,12 +9,6 @@ from coil_win_app.core_adapter import load_project_sources, preview_source_file
 from coil_win_app.core_dependency import configure_core_path, get_core_dependency_status
 from coil_win_app.project_state import ProjectState
 
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_DATA_DIR = REPO_ROOT / "Data"
-SECOND_RESULT_DIR = DEFAULT_DATA_DIR / "Second_Result"
-
-
 def create_project_page(state: ProjectState) -> QWidget:
     widget = QWidget()
     layout = QVBoxLayout(widget)
@@ -43,7 +37,7 @@ def create_project_page(state: ProjectState) -> QWidget:
 
     row = QHBoxLayout()
     project_button = QPushButton("Choose Project Folder")
-    data_button = QPushButton("Connect Default Data Folder")
+    data_button = QPushButton("Choose Data Folder")
     preview_button = QPushButton("Preview selected source")
     row.addWidget(project_button)
     row.addWidget(data_button)
@@ -99,13 +93,14 @@ def create_project_page(state: ProjectState) -> QWidget:
             state.add_status(f"core path failed: {result['core_import_error']}")
         core_status.setText(_format_core_status())
 
-    def connect_default_data_folder() -> None:
-        DEFAULT_DATA_DIR.mkdir(parents=True, exist_ok=True)
-        second_result = ensure_second_result_folder(DEFAULT_DATA_DIR)
-        state.set_data_path(DEFAULT_DATA_DIR)
-        data_label.setText(f"Data folder: {DEFAULT_DATA_DIR} | second result folder: {second_result.name}")
+    def choose_data_folder() -> None:
+        folder = QFileDialog.getExistingDirectory(widget, "Choose data folder")
+        if not folder:
+            return
+        state.set_data_path(folder)
+        data_label.setText(f"Data folder: {folder}")
         _refresh_sources(
-            DEFAULT_DATA_DIR,
+            Path(folder),
             source_count_label,
             source_list,
             finite_combo,
@@ -146,7 +141,7 @@ def create_project_page(state: ProjectState) -> QWidget:
 
     project_button.clicked.connect(choose_project_folder)
     core_button.clicked.connect(choose_core_folder)
-    data_button.clicked.connect(connect_default_data_folder)
+    data_button.clicked.connect(choose_data_folder)
     finite_combo.currentIndexChanged.connect(update_finite_selection)
     continuous_combo.currentIndexChanged.connect(update_continuous_selection)
     actual_drive_combo.currentIndexChanged.connect(update_actual_drive_selection)
@@ -247,12 +242,6 @@ def _format_core_status() -> str:
         f"checked={len(status['core_modules_checked'])} | missing={len(missing)} | "
         f"added sys.path={added_path} | streamlit imported={streamlit}"
     )
-
-
-def ensure_second_result_folder(data_dir: Path = DEFAULT_DATA_DIR) -> Path:
-    second_result_dir = data_dir / "Second_Result"
-    second_result_dir.mkdir(parents=True, exist_ok=True)
-    return second_result_dir
 
 
 _TEXT_BOX_STYLE = """

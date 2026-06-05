@@ -24,6 +24,61 @@ def test_finite_first_schema_validation_ok_with_supported_columns() -> None:
     assert result["resolved_columns"]["target_field"] == "physical_target_output_mT"
 
 
+def test_prepare_finite_first_input_frame_maps_aliases_without_dropping_raw_columns() -> None:
+    from coil_win_app.core_adapter import prepare_finite_first_input_frame
+
+    frame = pd.DataFrame(
+        {
+            "TimeMs": [0.0, 10.0],
+            "Voltage1_V": [0.0, 1.0],
+            "HallBz": [0.0, -10.0],
+            "target_output": [0.0, 10.0],
+        }
+    )
+
+    prepared, metadata = prepare_finite_first_input_frame(frame)
+
+    assert metadata["status"] == "ok"
+    assert metadata["resolved_columns"]["time"] == "TimeMs"
+    assert metadata["resolved_columns"]["voltage"] == "Voltage1_V"
+    assert metadata["resolved_columns"]["target_field"] == "target_output"
+    assert prepared["time_s"].tolist() == [0.0, 0.01]
+    assert prepared["limited_voltage_v"].tolist() == [0.0, 1.0]
+    assert prepared["physical_target_output_mT"].tolist() == [0.0, 10.0]
+    assert "HallBz" in prepared.columns
+    assert "Voltage1_V" in prepared.columns
+
+
+def test_prepare_finite_first_input_frame_rejects_final_lut_only_schema() -> None:
+    from coil_win_app.core_adapter import prepare_finite_first_input_frame
+
+    prepared, metadata = prepare_finite_first_input_frame(
+        pd.DataFrame({"sample_index": [0, 1], "time_s": [0.0, 0.1], "voltage_v": [0.0, 1.0]})
+    )
+
+    assert prepared is None
+    assert metadata["status"] == "schema_unavailable"
+    assert metadata["rejected_reason"] == "final_lut_export_schema_is_not_finite_first_input"
+
+
+def test_prepare_finite_first_input_frame_requires_numeric_finite_values() -> None:
+    from coil_win_app.core_adapter import prepare_finite_first_input_frame
+
+    _prepared, metadata = prepare_finite_first_input_frame(
+        pd.DataFrame(
+            {
+                "time_s": [0.0, 0.1],
+                "limited_voltage_v": ["bad", "nan"],
+                "HallBz": [0.0, -1.0],
+                "target_field_mT": [0.0, 1.0],
+            }
+        )
+    )
+
+    assert metadata["status"] == "schema_unavailable"
+    assert "voltage" in metadata["missing_column_groups"]
+
+
 def test_finite_first_schema_validation_accepts_latest_column_aliases() -> None:
     from coil_win_app.core_adapter import validate_finite_first_input_frame
 

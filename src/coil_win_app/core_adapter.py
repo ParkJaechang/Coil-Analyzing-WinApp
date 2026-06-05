@@ -13,8 +13,40 @@ TARGET_SHAPE = "fixed_rounded_triangle"
 FIELD_NORMALIZATION_MODE = "target_peak"
 VOLTAGE_LIMIT_V = 10.0
 CORE_REPO = "ParkJaechang/Coil-Analyzing"
-CORE_SHA = "61db522181a9b5747129a65044cefadb4ca0f407"
+CORE_SHA = "b3c1103825c9c30f2db9ea14153959ffc2fe300e"
 FINITE_FIRST_REQUIRED_API = "field_analysis.finite_first_phase_sync.apply_finite_first_phase_sync_modeling"
+FINITE_FIRST_COLUMN_CANDIDATES = {
+    "time": ["time_s", "TimeMs", "Time_ms"],
+    "voltage": [
+        "limited_voltage_v",
+        "feedback_corrected_limited_voltage_v",
+        "recommended_voltage_v",
+        "first_modeled_voltage_v",
+        "voltage_v",
+        "command_voltage_v",
+        "Voltage1_V",
+        "raw_voltage_v",
+        "finite_first_input_lut_voltage_v",
+    ],
+    "measured_field": [
+        "finite_first_actual_measured_field_mT",
+        "measured_field_effective_mT",
+        "measured_field_normalized_mT",
+        "normalized_measured_field_mT",
+        "raw_hallbz_mT",
+        "HallBz",
+        "HallZ",
+        "bz_mT",
+        "Bz_mT",
+    ],
+    "target_field": [
+        "physical_target_output_mT",
+        "target_field_mT",
+        "target_output",
+        "normalized_physical_target_output_mT",
+        "aligned_target_output",
+    ],
+}
 
 ModelingMode = Literal["finite_startup_aware", "continuous_steady_state"]
 
@@ -157,38 +189,11 @@ def preview_source_file(source_record: dict[str, Any], max_rows: int = 20) -> Mo
 
 
 def validate_finite_first_input_frame(frame: pd.DataFrame) -> dict[str, Any]:
-    candidates = {
-        "time": ["time_s", "TimeMs"],
-        "voltage": [
-            "limited_voltage_v",
-            "voltage_v",
-            "command_voltage_v",
-            "Voltage1_V",
-            "raw_voltage_v",
-            "finite_first_input_lut_voltage_v",
-        ],
-        "measured_field": [
-            "finite_first_actual_measured_field_mT",
-            "measured_field_effective_mT",
-            "measured_field_normalized_mT",
-            "raw_hallbz_mT",
-            "HallBz",
-            "HallZ",
-            "bz_mT",
-            "Bz_mT",
-        ],
-        "target_field": [
-            "physical_target_output_mT",
-            "target_field_mT",
-            "normalized_physical_target_output_mT",
-            "aligned_target_output",
-        ],
-    }
     resolved: dict[str, str] = {}
     missing: list[str] = []
     columns = {str(column) for column in frame.columns}
-    for group, names in candidates.items():
-        found = next((name for name in names if name in columns), None)
+    for group, names in FINITE_FIRST_COLUMN_CANDIDATES.items():
+        found = next((name for name in names if name in columns and _has_numeric_finite(frame[name])), None)
         if found is None:
             missing.append(group)
         else:
@@ -197,8 +202,43 @@ def validate_finite_first_input_frame(frame: pd.DataFrame) -> dict[str, Any]:
         "status": "ok" if not missing else "schema_unavailable",
         "resolved_columns": resolved,
         "missing_column_groups": missing,
-        "required_column_candidates": candidates,
+        "required_column_candidates": FINITE_FIRST_COLUMN_CANDIDATES,
+        "prepared_columns": [str(column) for column in frame.columns],
     }
+
+
+def prepare_finite_first_input_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame | None, dict[str, Any]]:
+    columns = {str(column) for column in frame.columns}
+    if columns == {"sample_index", "time_s", "voltage_v"}:
+        return None, {
+            "status": "schema_unavailable",
+            "resolved_columns": {},
+            "missing_column_groups": ["measured_field", "target_field"],
+            "required_column_candidates": FINITE_FIRST_COLUMN_CANDIDATES,
+            "prepared_columns": [str(column) for column in frame.columns],
+            "rejected_reason": "final_lut_export_schema_is_not_finite_first_input",
+        }
+
+    schema = validate_finite_first_input_frame(frame)
+    if schema["status"] != "ok":
+        return None, schema
+
+    prepared = frame.copy()
+    resolved = schema["resolved_columns"]
+    time_column = resolved["time"]
+    if "time_s" not in prepared.columns:
+        time_values = pd.to_numeric(prepared[time_column], errors="coerce")
+        if time_column in {"TimeMs", "Time_ms"}:
+            time_values = time_values / 1000.0
+        prepared["time_s"] = time_values
+    if "limited_voltage_v" not in prepared.columns:
+        prepared["limited_voltage_v"] = pd.to_numeric(prepared[resolved["voltage"]], errors="coerce")
+    if "physical_target_output_mT" not in prepared.columns:
+        prepared["physical_target_output_mT"] = pd.to_numeric(prepared[resolved["target_field"]], errors="coerce")
+
+    metadata = dict(schema)
+    metadata["prepared_columns"] = [str(column) for column in prepared.columns]
+    return prepared, metadata
 
 
 def build_target_config(
@@ -242,7 +282,7 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
     if source.status != "ok" or source.command_profile is None:
         source.metadata.update(_input_metadata(target_config, source_selection, FINITE_FIRST_REQUIRED_API, ready=False))
         return source
-    schema = validate_finite_first_input_frame(source.command_profile)
+    prepared_frame, schema = prepare_finite_first_input_frame(source.command_profile)
     if schema["status"] != "ok":
         return ModelingResult(
             status="schema_unavailable",
@@ -251,6 +291,8 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
                 "missing_column_groups": schema["missing_column_groups"],
                 "required_column_candidates": schema["required_column_candidates"],
                 "resolved_columns": schema["resolved_columns"],
+                "prepared_columns": schema.get("prepared_columns", []),
+                "rejected_reason": schema.get("rejected_reason"),
             },
             warnings=[],
             error_reason="finite first source schema is unavailable",
@@ -280,7 +322,7 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
         return _not_connected("finite first core API is unavailable", target_config, source_selection, required_api=FINITE_FIRST_REQUIRED_API)
     try:
         output = apply_fn(
-            source.command_profile,
+            prepared_frame,
             freq_hz=target_config.freq_hz,
             cycle_count=target_config.cycle_count,
             target_peak_field_mT=target_config.target_peak_field_mT,
@@ -300,6 +342,7 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
         result.metadata["core_bridge_used"] = True
         result.metadata["finite_first_bridge_version"] = "phase_synced_field_per_volt_aware"
         result.metadata.setdefault("final_voltage_limit_v", target_config.voltage_limit_v)
+        result.metadata.setdefault("finite_first_input_schema", schema)
     return result
 
 
@@ -329,19 +372,44 @@ def run_continuous_second_modeling(target_config: TargetConfig, first_result: Mo
     return _not_connected("continuous second modeling core dependency is not connected", target_config, actual_drive_source, required_api=required_api)
 
 
-def build_final_lut_export(modeling_result: ModelingResult) -> ModelingResult:
-    if modeling_result.metadata.get("result_kind") == "source_preview":
+def build_final_lut_export(
+    modeling_result: ModelingResult,
+    *,
+    allow_demo: bool = False,
+    allow_non_monotonic_time: bool = False,
+) -> ModelingResult:
+    if modeling_result.status != "ok":
+        return _failed(f"modeling result status is not ok: {modeling_result.status}")
+    if modeling_result.metadata.get("result_kind") in {"source_preview", "source_dataframe"}:
         return _failed("source preview result is not a final LUT export candidate")
+    if modeling_result.metadata.get("demo_only") and not allow_demo:
+        return _failed("demo modeling result requires explicit demo export path")
+    finite_status = modeling_result.metadata.get("finite_first_modeling_status")
+    if finite_status is not None and finite_status != "ok":
+        return _failed(f"finite first modeling status is not ok: {finite_status}")
     profile = modeling_result.command_profile
     if profile is None:
         return _failed("command_profile is missing")
+    if profile.empty:
+        return _failed("command_profile is empty")
     missing = [column for column in ("time_s", "limited_voltage_v") if column not in profile.columns]
     if missing:
         return _failed(f"command_profile missing required columns: {', '.join(missing)}")
-    export_frame = pd.DataFrame({"sample_index": range(len(profile)), "time_s": profile["time_s"].to_numpy(), "voltage_v": profile["limited_voltage_v"].to_numpy()})
+    time_s = pd.to_numeric(profile["time_s"], errors="coerce")
+    voltage_v = pd.to_numeric(profile["limited_voltage_v"], errors="coerce")
+    if not time_s.notna().all() or not voltage_v.notna().all():
+        return _failed("command_profile contains non-finite time_s or limited_voltage_v values")
+    if not allow_non_monotonic_time and not time_s.is_monotonic_increasing:
+        return _failed("command_profile time_s is non-monotonic")
+    export_frame = pd.DataFrame({"sample_index": range(len(profile)), "time_s": time_s.to_numpy(), "voltage_v": voltage_v.to_numpy()})
     return ModelingResult(
         status="ok",
-        metadata={"export_columns": ["sample_index", "time_s", "voltage_v"], "voltage_source_column": "limited_voltage_v", "fourier_resynthesis": False},
+        metadata={
+            "export_columns": ["sample_index", "time_s", "voltage_v"],
+            "voltage_source_column": "limited_voltage_v",
+            "fourier_resynthesis": False,
+            "row_count": int(len(export_frame)),
+        },
         warnings=[],
         command_profile=profile,
         export_frame=export_frame,
@@ -367,18 +435,30 @@ def _wrap_core_output(output: Any) -> ModelingResult:
         profile, metadata = output[0], output[1]
         warnings = output[2] if len(output) >= 3 else []
         if isinstance(profile, pd.DataFrame) and isinstance(metadata, dict):
+            status = _status_from_core_metadata(metadata, profile)
             return ModelingResult(
-                status=str(metadata.get("status", "ok")),
+                status=status,
                 metadata=dict(metadata),
                 warnings=list(warnings) if isinstance(warnings, list) else [],
                 command_profile=profile,
+                error_reason=None if status == "ok" else _core_status_error(metadata),
             )
     if isinstance(output, dict):
         profile = output.get("command_profile")
         if profile is None and isinstance(output.get("command_profile_df"), pd.DataFrame):
             profile = output["command_profile_df"]
         if isinstance(profile, pd.DataFrame):
-            return ModelingResult(status=str(output.get("status", "ok")), metadata=dict(output.get("metadata", {})), warnings=list(output.get("warnings", [])), command_profile=profile)
+            metadata = dict(output.get("metadata", {}))
+            if "status" in output and "status" not in metadata:
+                metadata["status"] = output["status"]
+            status = _status_from_core_metadata(metadata, profile)
+            return ModelingResult(
+                status=status,
+                metadata=metadata,
+                warnings=list(output.get("warnings", [])),
+                command_profile=profile,
+                error_reason=None if status == "ok" else _core_status_error(metadata),
+            )
     return _failed(f"finite first core returned unsupported type: {type(output).__name__}")
 
 
@@ -452,3 +532,26 @@ def _infer_source_category(filename: str) -> tuple[str, str]:
     if "continuous" in name:
         return "continuous", "keyword_match"
     return "unknown", "unknown"
+
+
+def _has_numeric_finite(series: pd.Series) -> bool:
+    numeric = pd.to_numeric(series, errors="coerce")
+    return bool(numeric.notna().any())
+
+
+def _status_from_core_metadata(metadata: dict[str, Any], profile: pd.DataFrame) -> str:
+    finite_status = metadata.get("finite_first_modeling_status")
+    if finite_status is not None:
+        return "ok" if finite_status == "ok" else str(finite_status)
+    explicit_status = metadata.get("status")
+    if explicit_status is not None:
+        return str(explicit_status)
+    columns = {str(column) for column in profile.columns}
+    if {"time_s", "limited_voltage_v"}.issubset(columns) and not profile.empty:
+        return "ok"
+    return "failed"
+
+
+def _core_status_error(metadata: dict[str, Any]) -> str:
+    status = metadata.get("finite_first_modeling_status") or metadata.get("status") or "unknown"
+    return f"finite first modeling status is not ok: {status}"
