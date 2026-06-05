@@ -102,7 +102,7 @@ def test_streamlit_dependency_sha_is_documented() -> None:
 
     doc = Path("docs/winapp_core_dependency.md").read_text(encoding="utf-8")
 
-    assert CORE_SHA == "b3c1103825c9c30f2db9ea14153959ffc2fe300e"
+    assert CORE_SHA == "1d1e87470da23a75625e4810e7d9385634c95036"
     assert "STREAMLIT_CORE_REPO=ParkJaechang/Coil-Analyzing" in doc
     assert f"STREAMLIT_CORE_SHA={CORE_SHA}" in doc
 
@@ -116,3 +116,4 @@ def test_get_core_version_includes_dependency_status() -> None:
     assert "core_repo" in version
     assert "adapter_status" in version
     assert "core_import_available" in version
+    assert version["adapter_status"] == "finite_first_guarded_feature_detected"

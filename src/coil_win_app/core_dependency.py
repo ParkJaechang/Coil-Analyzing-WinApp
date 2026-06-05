@@ -80,8 +80,8 @@ def configure_core_path(path: str | Path) -> dict[str, Any]:
         }
     import_path = str(import_root)
     _clear_field_analysis_modules()
-    if import_path not in sys.path:
-        sys.path.insert(0, import_path)
+    sys.path[:] = [entry for entry in sys.path if entry != import_path]
+    sys.path.insert(0, import_path)
     importlib.invalidate_caches()
     if import_path not in _CONFIGURED_CORE_PATHS:
         _CONFIGURED_CORE_PATHS.append(import_path)
@@ -129,6 +129,8 @@ def resolve_core_dependency() -> dict[str, Any]:
     elif blocked_forbidden:
         api_missing_reason = "forbidden module imported"
 
+    configured_path = _CONFIGURED_CORE_PATHS[-1] if _CONFIGURED_CORE_PATHS else None
+    actual_sha = _git_sha_for_configured_path(configured_path)
     return {
         "core_repo": CORE_REPO,
         "core_sha": CORE_SHA,
@@ -145,9 +147,11 @@ def resolve_core_dependency() -> dict[str, Any]:
         "required_core_api": f"{FINITE_FIRST_API_MODULE}.{FINITE_FIRST_API_NAME}",
         "api_missing_reason": api_missing_reason,
         "optional_core_modules_available": available,
-        "configured_core_path": _CONFIGURED_CORE_PATHS[-1] if _CONFIGURED_CORE_PATHS else None,
+        "configured_core_path": configured_path,
         "configured_core_paths": list(_CONFIGURED_CORE_PATHS),
-        "added_sys_path": _CONFIGURED_CORE_PATHS[-1] if _CONFIGURED_CORE_PATHS else None,
+        "added_sys_path": configured_path,
+        "actual_core_sha": actual_sha,
+        "actual_core_sha_matches_expected": None if actual_sha is None else actual_sha == CORE_SHA,
         "streamlit_imported": "streamlit" in sys.modules,
         "forbidden_module_status": forbidden,
     }

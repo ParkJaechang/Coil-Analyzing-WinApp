@@ -248,6 +248,8 @@ def _format_core_status_from_dependency(status: dict[str, Any]) -> str:
         f"finite first core available={_yes_no(status.get('finite_first_core_available'))} | "
         f"finite first API available={_yes_no(status.get('finite_first_api_available'))} | "
         f"expected SHA={status.get('core_sha')} | "
+        f"actual SHA={status.get('actual_core_sha') or 'unknown'} | "
+        f"SHA match={_match_label(status.get('actual_core_sha_matches_expected'))} | "
         f"configured path={configured_path} | "
         f"missing finite first modules={_join_or_none(missing_finite)} | "
         f"missing optional workflow modules={_join_or_none(missing_optional)} | "
@@ -258,6 +260,12 @@ def _format_core_status_from_dependency(status: dict[str, Any]) -> str:
 
 
 def _yes_no(value: Any) -> str:
+    return "yes" if bool(value) else "no"
+
+
+def _match_label(value: Any) -> str:
+    if value is None:
+        return "unknown"
     return "yes" if bool(value) else "no"
 
 

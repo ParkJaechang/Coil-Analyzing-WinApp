@@ -13,7 +13,7 @@ TARGET_SHAPE = "fixed_rounded_triangle"
 FIELD_NORMALIZATION_MODE = "target_peak"
 VOLTAGE_LIMIT_V = 10.0
 CORE_REPO = "ParkJaechang/Coil-Analyzing"
-CORE_SHA = "b3c1103825c9c30f2db9ea14153959ffc2fe300e"
+CORE_SHA = "1d1e87470da23a75625e4810e7d9385634c95036"
 FINITE_FIRST_REQUIRED_API = "field_analysis.finite_first_phase_sync.apply_finite_first_phase_sync_modeling"
 FINITE_FIRST_COLUMN_CANDIDATES = {
     "time": ["time_s", "TimeMs", "Time_ms"],
@@ -87,7 +87,7 @@ def get_core_version() -> dict[str, str]:
     return {
         "core_repo": CORE_REPO,
         "core_sha": CORE_SHA,
-        "adapter_status": "placeholder_not_connected",
+        "adapter_status": "finite_first_guarded_feature_detected",
         "core_import_available": import_available,
     }
 
