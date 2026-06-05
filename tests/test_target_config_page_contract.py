@@ -24,6 +24,9 @@ def test_modeling_and_export_pages_use_project_state() -> None:
     assert "state.latest_continuous_first_result" in continuous_source
     assert "create_demo_modeling_result" in export_source
     assert "demo_only=True" in export_source
+    assert "state.latest_finite_first_result" in export_source
+    assert "state.latest_continuous_first_result or state.latest_finite_first_result" not in export_source
+    assert "export unavailable: no latest finite first modeling result" in export_source
 
 
 def test_main_window_passes_shared_project_state_to_pages() -> None:
@@ -56,6 +59,7 @@ def test_winapp_ui_source_has_no_mojibake() -> None:
         chr(0xBA3C) + chr(0xC1E0) + "?",
         "?" + chr(0x3145) + chr(0xC824) + chr(0xD560),
         chr(0xC12C) + chr(0xB5D7),
+        chr(0xC9F9) + "10V",
         chr(0xC9F9) + "10V",
     ]
 

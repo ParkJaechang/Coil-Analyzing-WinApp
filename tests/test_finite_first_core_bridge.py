@@ -140,6 +140,60 @@ def test_finite_first_bridge_wraps_tuple_core_output(tmp_path, monkeypatch) -> N
     assert result.command_profile["limited_voltage_v"].tolist() == [1.5]
 
 
+def test_finite_first_bridge_preserves_diagnostics_for_non_ok_tuple_output(tmp_path, monkeypatch) -> None:
+    from coil_win_app.core_adapter import run_finite_first_modeling
+
+    path = tmp_path / "finite_sine_1Hz.csv"
+    path.write_text("time_s,limited_voltage_v,HallBz,target_field_mT\n0,0,0,0\n", encoding="utf-8")
+    module = types.ModuleType("field_analysis.finite_first_phase_sync")
+
+    def apply_finite_first_phase_sync_modeling(command_profile, **_kwargs):
+        return (
+            pd.DataFrame({"time_s": command_profile["time_s"], "limited_voltage_v": [1.5]}),
+            {"finite_first_modeling_status": "missing_actual_measured_field"},
+        )
+
+    module.apply_finite_first_phase_sync_modeling = apply_finite_first_phase_sync_modeling
+    monkeypatch.setitem(sys.modules, "field_analysis", types.ModuleType("field_analysis"))
+    monkeypatch.setitem(sys.modules, "field_analysis.finite_first_phase_sync", module)
+
+    result = run_finite_first_modeling(_target_config(), {"path": str(path), "filename": path.name, "category": "finite"})
+
+    assert result.status == "missing_actual_measured_field"
+    assert "missing_actual_measured_field" in str(result.error_reason)
+    assert result.metadata["selected_source_filename"] == path.name
+    assert result.metadata["required_core_api"].endswith("apply_finite_first_phase_sync_modeling")
+    assert result.metadata["core_bridge_used"] is True
+    assert "finite_first_input_schema" in result.metadata
+
+
+def test_finite_first_bridge_preserves_diagnostics_for_non_ok_dict_output(tmp_path, monkeypatch) -> None:
+    from coil_win_app.core_adapter import run_finite_first_modeling
+
+    path = tmp_path / "finite_sine_1Hz.csv"
+    path.write_text("time_s,limited_voltage_v,HallBz,target_field_mT\n0,0,0,0\n", encoding="utf-8")
+    module = types.ModuleType("field_analysis.finite_first_phase_sync")
+
+    def apply_finite_first_phase_sync_modeling(command_profile, **_kwargs):
+        return {
+            "metadata": {"finite_first_modeling_status": "insufficient_phase_sync_support"},
+            "command_profile": pd.DataFrame({"time_s": command_profile["time_s"], "limited_voltage_v": [1.5]}),
+        }
+
+    module.apply_finite_first_phase_sync_modeling = apply_finite_first_phase_sync_modeling
+    monkeypatch.setitem(sys.modules, "field_analysis", types.ModuleType("field_analysis"))
+    monkeypatch.setitem(sys.modules, "field_analysis.finite_first_phase_sync", module)
+
+    result = run_finite_first_modeling(_target_config(), {"path": str(path), "filename": path.name, "category": "finite"})
+
+    assert result.status == "insufficient_phase_sync_support"
+    assert "insufficient_phase_sync_support" in str(result.error_reason)
+    assert result.metadata["selected_source_filename"] == path.name
+    assert result.metadata["required_core_api"].endswith("apply_finite_first_phase_sync_modeling")
+    assert result.metadata["core_bridge_used"] is True
+    assert "finite_first_input_schema" in result.metadata
+
+
 def test_finite_first_bridge_schema_unavailable_blocks_core(tmp_path) -> None:
     from coil_win_app.core_adapter import run_finite_first_modeling
 

@@ -1,0 +1,36 @@
+name: WinApp CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - winapp/bootstrap
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run tests
+        run: python -m pytest -q
+
+      - name: Print core SHA
+        run: python -c "from coil_win_app.core_adapter import CORE_SHA; print(CORE_SHA)"
+
+      - name: Print runtime diagnostics
+        run: python -c "from coil_win_app.core_dependency import build_runtime_diagnostic_packet; print(build_runtime_diagnostic_packet())"
+
+      - name: Run smoke
+        run: python src/coil_win_app/main.py --smoke

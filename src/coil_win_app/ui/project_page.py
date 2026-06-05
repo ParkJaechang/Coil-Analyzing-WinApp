@@ -232,16 +232,37 @@ def _selected_label(label: str, record: dict[str, Any] | None) -> str:
 
 
 def _format_core_status() -> str:
-    status = get_core_dependency_status()
-    state = "available" if status["core_import_available"] else "not_connected"
-    missing = status.get("missing_core_modules", [])
-    added_path = status.get("added_sys_path") or "none"
-    streamlit = "yes" if status.get("streamlit_imported") else "no"
+    return _format_core_status_from_dependency(get_core_dependency_status())
+
+
+def _format_core_status_from_dependency(status: dict[str, Any]) -> str:
+    configured_path = status.get("configured_core_path") or status.get("added_sys_path") or "none"
+    missing_finite = status.get("missing_finite_first_modules") or []
+    missing_optional = status.get("missing_optional_workflow_modules") or []
+    forbidden = status.get("forbidden_module_status") or {}
+    forbidden_loaded = sorted(name for name, item in forbidden.items() if isinstance(item, dict) and item.get("loaded"))
     return (
-        f"core dependency: {state} | expected SHA={status.get('core_sha')} | "
-        f"checked={len(status['core_modules_checked'])} | missing={len(missing)} | "
-        f"added sys.path={added_path} | streamlit imported={streamlit}"
+        "core dependency: "
+        f"core path configured={_yes_no(status.get('core_path_configured'))} | "
+        f"core package available={_yes_no(status.get('core_package_import_available'))} | "
+        f"finite first core available={_yes_no(status.get('finite_first_core_available'))} | "
+        f"finite first API available={_yes_no(status.get('finite_first_api_available'))} | "
+        f"expected SHA={status.get('core_sha')} | "
+        f"configured path={configured_path} | "
+        f"missing finite first modules={_join_or_none(missing_finite)} | "
+        f"missing optional workflow modules={_join_or_none(missing_optional)} | "
+        f"api missing reason={status.get('api_missing_reason') or 'none'} | "
+        f"streamlit imported={_yes_no(status.get('streamlit_imported'))} | "
+        f"forbidden loaded={_join_or_none(forbidden_loaded)}"
     )
+
+
+def _yes_no(value: Any) -> str:
+    return "yes" if bool(value) else "no"
+
+
+def _join_or_none(values: list[str]) -> str:
+    return ", ".join(values) if values else "none"
 
 
 _TEXT_BOX_STYLE = """

@@ -79,6 +79,44 @@ def test_prepare_finite_first_input_frame_requires_numeric_finite_values() -> No
     assert "voltage" in metadata["missing_column_groups"]
 
 
+def test_finite_first_schema_rejects_inf_only_voltage_column() -> None:
+    from coil_win_app.core_adapter import validate_finite_first_input_frame
+
+    result = validate_finite_first_input_frame(
+        pd.DataFrame(
+            {
+                "time_s": [0.0, 0.1],
+                "limited_voltage_v": [float("inf"), float("-inf")],
+                "HallBz": [0.0, -1.0],
+                "target_field_mT": [0.0, 1.0],
+            }
+        )
+    )
+
+    assert result["status"] == "schema_unavailable"
+    assert "voltage" in result["missing_column_groups"]
+
+
+def test_finite_first_schema_rejects_inf_only_time_measured_and_target_columns() -> None:
+    from coil_win_app.core_adapter import validate_finite_first_input_frame
+
+    result = validate_finite_first_input_frame(
+        pd.DataFrame(
+            {
+                "time_s": [float("inf"), float("-inf")],
+                "limited_voltage_v": [0.0, 1.0],
+                "HallBz": [float("inf"), float("-inf")],
+                "target_field_mT": [float("inf"), float("-inf")],
+            }
+        )
+    )
+
+    assert result["status"] == "schema_unavailable"
+    assert "time" in result["missing_column_groups"]
+    assert "measured_field" in result["missing_column_groups"]
+    assert "target_field" in result["missing_column_groups"]
+
+
 def test_finite_first_schema_validation_accepts_latest_column_aliases() -> None:
     from coil_win_app.core_adapter import validate_finite_first_input_frame
 

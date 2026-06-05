@@ -11,17 +11,21 @@ def create_final_export_page(state: ProjectState) -> QWidget:
     layout = QVBoxLayout(widget)
     preview = QTextEdit()
     preview.setReadOnly(True)
-    status = QLabel("No latest modeling result. Use demo only if you need to verify export UI.")
+    status = QLabel("No latest finite first modeling result. Use demo only if you need to verify export UI.")
     build_export = QPushButton("Build Final LUT Export Preview")
     demo_export = QPushButton("Create Demo Export Preview")
 
     def build_preview_from_latest() -> None:
-        result = state.latest_finite_first_result or state.latest_continuous_first_result
+        result = state.latest_finite_first_result
         if result is None:
-            status.setText("export unavailable: no latest modeling result")
-            preview.setPlainText("No latest modeling result. command_profile is missing.")
+            status.setText("export unavailable: no latest finite first modeling result")
+            preview.setPlainText("No latest finite first modeling result. command_profile is missing.")
             return
-        status.setText(f"latest result status={result.status}; source preview is not a final export candidate")
+        if result.status != "ok":
+            status.setText(f"export unavailable: finite first result status={result.status}")
+            preview.setPlainText(result.error_reason or f"finite first result status={result.status}")
+            return
+        status.setText(f"latest finite first result status={result.status}")
         export = build_final_lut_export(result)
         state.latest_export_result = export
         _show_export(export, preview, status)

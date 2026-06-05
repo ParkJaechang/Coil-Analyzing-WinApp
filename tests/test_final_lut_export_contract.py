@@ -94,6 +94,26 @@ def test_final_lut_export_rejects_bad_values_and_non_monotonic_time() -> None:
     assert build_final_lut_export(non_monotonic).status == "failed"
 
 
+def test_final_lut_export_rejects_infinite_time_and_voltage() -> None:
+    from coil_win_app.core_adapter import ModelingResult, build_final_lut_export
+
+    infinite_time = ModelingResult(
+        status="ok",
+        metadata={},
+        warnings=[],
+        command_profile=pd.DataFrame({"time_s": [0.0, float("inf")], "limited_voltage_v": [0.0, 1.0]}),
+    )
+    infinite_voltage = ModelingResult(
+        status="ok",
+        metadata={},
+        warnings=[],
+        command_profile=pd.DataFrame({"time_s": [0.0, 0.1], "limited_voltage_v": [0.0, float("-inf")]}),
+    )
+
+    assert build_final_lut_export(infinite_time).status == "failed"
+    assert build_final_lut_export(infinite_voltage).status == "failed"
+
+
 def test_final_lut_export_rejects_non_ok_finite_first_metadata() -> None:
     from coil_win_app.core_adapter import ModelingResult, build_final_lut_export
 

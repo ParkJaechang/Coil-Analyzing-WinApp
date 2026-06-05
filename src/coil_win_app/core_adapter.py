@@ -337,12 +337,13 @@ def run_finite_first_modeling(target_config: TargetConfig, source_selection: dic
             error_reason=f"finite first core call failed: {exc}",
         )
     result = _wrap_core_output(output)
-    if result.status == "ok":
-        result.metadata.update(_input_metadata(target_config, source_selection, FINITE_FIRST_REQUIRED_API, ready=True))
-        result.metadata["core_bridge_used"] = True
-        result.metadata["finite_first_bridge_version"] = "phase_synced_field_per_volt_aware"
-        result.metadata.setdefault("final_voltage_limit_v", target_config.voltage_limit_v)
-        result.metadata.setdefault("finite_first_input_schema", schema)
+    result.metadata.update(_input_metadata(target_config, source_selection, FINITE_FIRST_REQUIRED_API, ready=True))
+    result.metadata["core_bridge_used"] = True
+    result.metadata["finite_first_bridge_version"] = "phase_synced_field_per_volt_aware"
+    result.metadata.setdefault("final_voltage_limit_v", target_config.voltage_limit_v)
+    result.metadata.setdefault("finite_first_input_schema", schema)
+    if result.status != "ok" and not result.error_reason:
+        result.error_reason = _core_status_error(result.metadata)
     return result
 
 
@@ -397,7 +398,7 @@ def build_final_lut_export(
         return _failed(f"command_profile missing required columns: {', '.join(missing)}")
     time_s = pd.to_numeric(profile["time_s"], errors="coerce")
     voltage_v = pd.to_numeric(profile["limited_voltage_v"], errors="coerce")
-    if not time_s.notna().all() or not voltage_v.notna().all():
+    if not _series_all_finite(time_s) or not _series_all_finite(voltage_v):
         return _failed("command_profile contains non-finite time_s or limited_voltage_v values")
     if not allow_non_monotonic_time and not time_s.is_monotonic_increasing:
         return _failed("command_profile time_s is non-monotonic")
@@ -536,7 +537,17 @@ def _infer_source_category(filename: str) -> tuple[str, str]:
 
 def _has_numeric_finite(series: pd.Series) -> bool:
     numeric = pd.to_numeric(series, errors="coerce")
-    return bool(numeric.notna().any())
+    return bool(_series_finite_mask(numeric).any())
+
+
+def _series_all_finite(series: pd.Series) -> bool:
+    numeric = pd.to_numeric(series, errors="coerce")
+    return bool(_series_finite_mask(numeric).all())
+
+
+def _series_finite_mask(series: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(series, errors="coerce")
+    return numeric.notna() & (numeric != float("inf")) & (numeric != float("-inf"))
 
 
 def _status_from_core_metadata(metadata: dict[str, Any], profile: pd.DataFrame) -> str:
