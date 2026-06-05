@@ -18,7 +18,7 @@ def test_runtime_diagnostic_packet_reports_required_fields(tmp_path) -> None:
     packet = build_runtime_diagnostic_packet()
 
     assert packet["expected_core_repo"] == "ParkJaechang/Coil-Analyzing"
-    assert packet["expected_core_sha"] == "1d1e87470da23a75625e4810e7d9385634c95036"
+    assert packet["expected_core_sha"] == "27e89a4d23b78747c7ac7b18b093bd542c39fc1a"
     assert packet["configured_core_path"] == str(tmp_path / "src")
     assert packet["configured_core_paths"]
     assert "module_status" in packet

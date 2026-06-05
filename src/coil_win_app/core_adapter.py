@@ -13,7 +13,7 @@ TARGET_SHAPE = "fixed_rounded_triangle"
 FIELD_NORMALIZATION_MODE = "target_peak"
 VOLTAGE_LIMIT_V = 10.0
 CORE_REPO = "ParkJaechang/Coil-Analyzing"
-CORE_SHA = "1d1e87470da23a75625e4810e7d9385634c95036"
+CORE_SHA = "27e89a4d23b78747c7ac7b18b093bd542c39fc1a"
 FINITE_FIRST_REQUIRED_API = "field_analysis.finite_first_phase_sync.apply_finite_first_phase_sync_modeling"
 FINITE_FIRST_COLUMN_CANDIDATES = {
     "time": ["time_s", "TimeMs", "Time_ms"],
