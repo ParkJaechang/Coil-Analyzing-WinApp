@@ -14,6 +14,7 @@ from coil_win_app.core_adapter import (
     run_finite_second_modeling,
 )
 from coil_win_app.project_state import ProjectState
+from coil_win_app.result_diagnostics import format_finite_first_summary
 
 
 def create_finite_modeling_page(state: ProjectState) -> QWidget:
@@ -36,6 +37,7 @@ def create_finite_modeling_page(state: ProjectState) -> QWidget:
                     _format_config_summary(state.target_config),
                     _format_source_summary("Selected finite source", state.selected_finite_source),
                     _format_source_summary("Selected actual-drive source", state.selected_actual_drive_source),
+                    format_finite_first_summary(result),
                     _format_result("finite first modeling", result),
                 ]
             )

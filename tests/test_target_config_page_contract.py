@@ -19,12 +19,14 @@ def test_modeling_and_export_pages_use_project_state() -> None:
     assert "Target Config를 먼저 설정하십시오." in finite_source
     assert "Target Config를 먼저 설정하십시오." in continuous_source
     assert "run_finite_first_modeling" in finite_source
+    assert "format_finite_first_summary" in finite_source
     assert "state.latest_finite_first_result" in finite_source
     assert "run_continuous_extraction" in continuous_source
     assert "state.latest_continuous_first_result" in continuous_source
     assert "create_demo_modeling_result" in export_source
     assert "demo_only=True" in export_source
     assert "state.latest_finite_first_result" in export_source
+    assert "explain_final_lut_export_eligibility" in export_source
     assert "state.latest_continuous_first_result or state.latest_finite_first_result" not in export_source
     assert "export unavailable: no latest finite first modeling result" in export_source
 
@@ -54,13 +56,18 @@ def test_winapp_ui_source_has_no_mojibake() -> None:
         chr(0xFFFD),
         chr(0xF9E4),
         chr(0xC496),
-        "?" + chr(0xAFB8),
-        chr(0xB97C) + "?",
-        chr(0xBA3C) + chr(0xC1E0) + "?",
-        "?" + chr(0x3145) + chr(0xC824) + chr(0xD560),
-        chr(0xC12C) + chr(0xB5D7),
+        "?" + chr(0xAFB8) + chr(0xC0AC),
+        chr(0x00EC),
+        chr(0x00ED),
+        chr(0x00EB),
+        chr(0x00EA),
         chr(0xC9F9) + "10V",
-        chr(0xC9F9) + "10V",
+        chr(0xD734),
+        chr(0x7652),
+        chr(0xC1F1),
+        chr(0xC12C),
+        chr(0xB5D7),
+        chr(0xC0BD),
     ]
 
     offenders: list[str] = []

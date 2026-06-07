@@ -6,8 +6,9 @@ from typing import Any
 from PySide6.QtWidgets import QFileDialog, QComboBox, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 
 from coil_win_app.core_adapter import load_project_sources, preview_source_file
-from coil_win_app.core_dependency import configure_core_path, get_core_dependency_status
+from coil_win_app.core_dependency import configure_core_path, get_core_dependency_status, build_runtime_diagnostic_packet
 from coil_win_app.project_state import ProjectState
+from coil_win_app.runtime_diagnostics import format_runtime_diagnostic_packet
 
 def create_project_page(state: ProjectState) -> QWidget:
     widget = QWidget()
@@ -21,6 +22,9 @@ def create_project_page(state: ProjectState) -> QWidget:
     preview_box = QTextEdit()
     preview_box.setReadOnly(True)
     preview_box.setStyleSheet(_TEXT_BOX_STYLE)
+    runtime_diagnostic_box = QTextEdit()
+    runtime_diagnostic_box.setReadOnly(True)
+    runtime_diagnostic_box.setStyleSheet(_TEXT_BOX_STYLE)
     core_status = _info_label(_format_core_status())
 
     finite_combo = QComboBox()
@@ -45,7 +49,10 @@ def create_project_page(state: ProjectState) -> QWidget:
     layout.addWidget(_section_title("CORE STATUS"))
     layout.addWidget(core_status)
     core_button = QPushButton("Choose Core Source Folder")
+    runtime_diagnostic_button = QPushButton("Show Runtime Diagnostic Packet")
     layout.addWidget(core_button)
+    layout.addWidget(runtime_diagnostic_button)
+    layout.addWidget(runtime_diagnostic_box)
     layout.addWidget(_section_title("SOURCE INVENTORY"))
     layout.addWidget(source_count_label)
     layout.addWidget(_section_title("SOURCE SELECTION"))
@@ -92,6 +99,10 @@ def create_project_page(state: ProjectState) -> QWidget:
         else:
             state.add_status(f"core path failed: {result['core_import_error']}")
         core_status.setText(_format_core_status())
+
+    def show_runtime_diagnostic_packet() -> None:
+        packet = build_runtime_diagnostic_packet()
+        runtime_diagnostic_box.setPlainText(format_runtime_diagnostic_packet(packet))
 
     def choose_data_folder() -> None:
         folder = QFileDialog.getExistingDirectory(widget, "Choose data folder")
@@ -141,6 +152,7 @@ def create_project_page(state: ProjectState) -> QWidget:
 
     project_button.clicked.connect(choose_project_folder)
     core_button.clicked.connect(choose_core_folder)
+    runtime_diagnostic_button.clicked.connect(show_runtime_diagnostic_packet)
     data_button.clicked.connect(choose_data_folder)
     finite_combo.currentIndexChanged.connect(update_finite_selection)
     continuous_combo.currentIndexChanged.connect(update_continuous_selection)
