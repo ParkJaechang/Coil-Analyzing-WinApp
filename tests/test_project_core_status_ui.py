@@ -89,3 +89,11 @@ def test_format_core_status_reports_sha_mismatch() -> None:
 
     assert "actual SHA=actual" in text
     assert "SHA match=no" in text
+
+
+def test_project_page_wires_runtime_diagnostic_button() -> None:
+    source = open("src/coil_win_app/ui/project_page.py", encoding="utf-8").read()
+
+    assert "Show Runtime Diagnostic Packet" in source
+    assert "build_runtime_diagnostic_packet" in source
+    assert "format_runtime_diagnostic_packet" in source

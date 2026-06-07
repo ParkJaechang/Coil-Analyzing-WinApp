@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidg
 
 from coil_win_app.core_adapter import build_final_lut_export, create_demo_modeling_result
 from coil_win_app.project_state import ProjectState
+from coil_win_app.result_diagnostics import explain_final_lut_export_eligibility
 
 
 def create_final_export_page(state: ProjectState) -> QWidget:
@@ -21,9 +22,10 @@ def create_final_export_page(state: ProjectState) -> QWidget:
             status.setText("export unavailable: no latest finite first modeling result")
             preview.setPlainText("No latest finite first modeling result. command_profile is missing.")
             return
-        if result.status != "ok":
-            status.setText(f"export unavailable: finite first result status={result.status}")
-            preview.setPlainText(result.error_reason or f"finite first result status={result.status}")
+        eligibility = explain_final_lut_export_eligibility(result)
+        if not eligibility["eligible"]:
+            status.setText(f"export unavailable: {eligibility['blocking_reason']}")
+            preview.setPlainText(_format_export_eligibility(eligibility))
             return
         status.setText(f"latest finite first result status={result.status}")
         export = build_final_lut_export(result)
@@ -63,3 +65,15 @@ def _show_export(export, preview: QTextEdit, status: QLabel) -> None:
         return
     status.setText(f"export status=ok; rows={len(export.export_frame)}; demo_only={export.metadata.get('demo_only', False)}")
     preview.setPlainText(export.export_frame.to_csv(index=False))
+
+
+def _format_export_eligibility(eligibility: dict[str, object]) -> str:
+    return "\n".join(
+        [
+            "Final LUT export eligibility:",
+            f"eligible={eligibility.get('eligible')}",
+            f"blocking_reason={eligibility.get('blocking_reason') or 'none'}",
+            f"required_columns={', '.join(str(item) for item in eligibility.get('required_columns', []))}",
+            f"actual_columns={', '.join(str(item) for item in eligibility.get('actual_columns', [])) or 'none'}",
+        ]
+    )
