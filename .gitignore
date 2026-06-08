@@ -1,0 +1,15 @@
+outputs/
+Data/
+*.csv
+*.xlsx
+*.xlsm
+*.xls
+.pytest_cache/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.spec
+.venv/
+venv/
