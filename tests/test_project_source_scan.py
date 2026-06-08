@@ -31,6 +31,9 @@ def test_load_project_sources_returns_records_by_category(tmp_path) -> None:
     assert reason_by_name["continuous_triangle_2Hz.csv"] == "filename_pattern"
     assert reason_by_name["abc123_finite_result_validation.csv"] == "keyword_match"
     assert reason_by_name["notes.txt"] == "unknown"
+    finite_record = next(record for record in records if record["filename"] == "finite_sine_1Hz_1.0cycle.csv")
+    assert finite_record["suffix"] == ".csv"
+    assert int(finite_record["file_size_bytes"]) > 0
 
 
 def test_source_category_inference_patterns(tmp_path) -> None:

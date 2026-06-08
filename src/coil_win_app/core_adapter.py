@@ -379,29 +379,20 @@ def build_final_lut_export(
     allow_demo: bool = False,
     allow_non_monotonic_time: bool = False,
 ) -> ModelingResult:
-    if modeling_result.status != "ok":
-        return _failed(f"modeling result status is not ok: {modeling_result.status}")
-    if modeling_result.metadata.get("result_kind") in {"source_preview", "source_dataframe"}:
-        return _failed("source preview result is not a final LUT export candidate")
-    if modeling_result.metadata.get("demo_only") and not allow_demo:
-        return _failed("demo modeling result requires explicit demo export path")
-    finite_status = modeling_result.metadata.get("finite_first_modeling_status")
-    if finite_status is not None and finite_status != "ok":
-        return _failed(f"finite first modeling status is not ok: {finite_status}")
+    from coil_win_app.result_diagnostics import explain_final_lut_export_eligibility
+
+    eligibility = explain_final_lut_export_eligibility(
+        modeling_result,
+        allow_demo=allow_demo,
+        allow_non_monotonic_time=allow_non_monotonic_time,
+    )
+    if not eligibility["eligible"]:
+        return _failed(str(eligibility["blocking_reason"]))
     profile = modeling_result.command_profile
     if profile is None:
         return _failed("command_profile is missing")
-    if profile.empty:
-        return _failed("command_profile is empty")
-    missing = [column for column in ("time_s", "limited_voltage_v") if column not in profile.columns]
-    if missing:
-        return _failed(f"command_profile missing required columns: {', '.join(missing)}")
     time_s = pd.to_numeric(profile["time_s"], errors="coerce")
     voltage_v = pd.to_numeric(profile["limited_voltage_v"], errors="coerce")
-    if not _series_all_finite(time_s) or not _series_all_finite(voltage_v):
-        return _failed("command_profile contains non-finite time_s or limited_voltage_v values")
-    if not allow_non_monotonic_time and not time_s.is_monotonic_increasing:
-        return _failed("command_profile time_s is non-monotonic")
     export_frame = pd.DataFrame({"sample_index": range(len(profile)), "time_s": time_s.to_numpy(), "voltage_v": voltage_v.to_numpy()})
     return ModelingResult(
         status="ok",
@@ -507,7 +498,16 @@ def _scan_source_records(root: Path) -> list[dict[str, str]]:
     paths = sorted((path for path in root.rglob("*") if path.is_file()), key=lambda path: path.name.lower())
     for path in paths:
         category, reason = _infer_source_category(path.name)
-        records.append({"path": str(path), "filename": path.name, "category": category, "reason": reason})
+        records.append(
+            {
+                "path": str(path),
+                "filename": path.name,
+                "category": category,
+                "reason": reason,
+                "suffix": path.suffix.lower(),
+                "file_size_bytes": str(path.stat().st_size),
+            }
+        )
     return records
 
 
