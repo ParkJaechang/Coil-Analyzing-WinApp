@@ -49,8 +49,15 @@ def format_runtime_diagnostic_packet(packet: dict[str, Any]) -> str:
 def build_core_status_summary(status_or_packet: dict[str, Any]) -> dict[str, Any]:
     forbidden = status_or_packet.get("forbidden_module_status") or {}
     forbidden_loaded = sorted(name for name, item in forbidden.items() if isinstance(item, dict) and item.get("loaded"))
-    missing_finite = list(status_or_packet.get("missing_finite_first_modules") or [])
-    missing_optional = list(status_or_packet.get("missing_optional_workflow_modules") or [])
+    module_status = status_or_packet.get("module_status") or {}
+    if "missing_finite_first_modules" in status_or_packet:
+        missing_finite = list(status_or_packet.get("missing_finite_first_modules") or [])
+    else:
+        missing_finite = _missing_modules(module_status, FINITE_FIRST_MODULES)
+    if "missing_optional_workflow_modules" in status_or_packet:
+        missing_optional = list(status_or_packet.get("missing_optional_workflow_modules") or [])
+    else:
+        missing_optional = _missing_modules(module_status, OPTIONAL_WORKFLOW_MODULES)
     core_path_configured = bool(status_or_packet.get("core_path_configured") or status_or_packet.get("configured_core_path"))
     package_available = bool(
         status_or_packet.get("core_package_import_available")

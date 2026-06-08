@@ -77,6 +77,56 @@ def test_core_status_summary_error_warning_ok_cases() -> None:
     assert ok["severity"] == "ok"
 
 
+def test_core_status_summary_derives_missing_finite_modules_from_raw_packet() -> None:
+    from coil_win_app.runtime_diagnostics import build_core_status_summary
+
+    raw_packet = {
+        "configured_core_path": "D:/core/src",
+        "actual_core_sha_matches_expected": True,
+        "forbidden_module_status": {},
+        "finite_first_api": {"status": "ok"},
+        "module_status": {
+            "field_analysis.finite_first_phase_sync": {"status": "ok"},
+            "field_analysis.first_modeling_voltage_response": {"status": "ok"},
+            "field_analysis.modeling_error_metrics": {"status": "ok"},
+            "field_analysis.voltage_policy": {"status": "ok"},
+            "field_analysis.final_modeled_lut": {"status": "failed"},
+        },
+    }
+
+    summary = build_core_status_summary(raw_packet)
+
+    assert summary["severity"] == "error"
+    assert "missing finite-first modules" in summary["blocking_reason"]
+    assert "field_analysis.final_modeled_lut" in summary["missing_finite_first_modules"]
+
+
+def test_core_status_summary_derives_optional_only_missing_from_raw_packet() -> None:
+    from coil_win_app.runtime_diagnostics import build_core_status_summary
+
+    raw_packet = {
+        "configured_core_path": "D:/core/src",
+        "actual_core_sha_matches_expected": True,
+        "forbidden_module_status": {},
+        "finite_first_api": {"status": "ok"},
+        "module_status": {
+            "field_analysis.finite_first_phase_sync": {"status": "ok"},
+            "field_analysis.first_modeling_voltage_response": {"status": "ok"},
+            "field_analysis.modeling_error_metrics": {"status": "ok"},
+            "field_analysis.voltage_policy": {"status": "ok"},
+            "field_analysis.final_modeled_lut": {"status": "ok"},
+            "field_analysis.continuous_first_modeling": {"status": "failed"},
+        },
+    }
+
+    summary = build_core_status_summary(raw_packet)
+
+    assert summary["severity"] == "warning"
+    assert summary["blocking_reason"] is None
+    assert summary["missing_finite_first_modules"] == []
+    assert "field_analysis.continuous_first_modeling" in summary["missing_optional_workflow_modules"]
+
+
 def test_project_page_wires_runtime_diagnostics_without_auto_file_writes() -> None:
     source = open("src/coil_win_app/ui/project_page.py", encoding="utf-8").read()
 
