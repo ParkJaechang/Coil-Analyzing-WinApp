@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidg
 
 from coil_win_app.core_adapter import build_final_lut_export, create_demo_modeling_result
 from coil_win_app.project_state import ProjectState
+from coil_win_app.result_diagnostics import explain_final_lut_export_eligibility
 
 
 def create_final_export_page(state: ProjectState) -> QWidget:
@@ -21,13 +22,20 @@ def create_final_export_page(state: ProjectState) -> QWidget:
             status.setText("export unavailable: no latest finite first modeling result")
             preview.setPlainText("No latest finite first modeling result. command_profile is missing.")
             return
-        if result.status != "ok":
-            status.setText(f"export unavailable: finite first result status={result.status}")
-            preview.setPlainText(result.error_reason or f"finite first result status={result.status}")
+        eligibility = explain_final_lut_export_eligibility(result)
+        if not eligibility["eligible"]:
+            status.setText(f"export unavailable: {eligibility['blocking_reason']}")
+            preview.setPlainText(_format_export_eligibility(eligibility))
+            state.add_status("final export eligibility checked: blocked")
             return
-        status.setText(f"latest finite first result status={result.status}")
+        status.setText(
+            "latest finite first result status={status}; export eligibility=yes".format(
+                status=result.status,
+            )
+        )
         export = build_final_lut_export(result)
         state.latest_export_result = export
+        state.add_status("final export preview built")
         _show_export(export, preview, status)
 
     def build_demo_preview() -> None:
@@ -36,6 +44,7 @@ def create_final_export_page(state: ProjectState) -> QWidget:
         export = build_final_lut_export(result, allow_demo=True)
         export.metadata["demo_only"] = True
         state.latest_export_result = export
+        state.add_status("demo final export preview built")
         _show_export(export, preview, status)
 
     build_export.clicked.connect(build_preview_from_latest)
@@ -61,5 +70,26 @@ def _show_export(export, preview: QTextEdit, status: QLabel) -> None:
         status.setText(f"export status=failed; invalid columns={columns}")
         preview.setPlainText("invalid final LUT schema")
         return
-    status.setText(f"export status=ok; rows={len(export.export_frame)}; demo_only={export.metadata.get('demo_only', False)}")
+    voltage_peak = export.export_frame["voltage_v"].abs().max()
+    status.setText(
+        "export status=ok; rows={rows}; voltage_peak={peak:g}; demo_only={demo}".format(
+            rows=len(export.export_frame),
+            peak=float(voltage_peak),
+            demo=export.metadata.get("demo_only", False),
+        )
+    )
     preview.setPlainText(export.export_frame.to_csv(index=False))
+
+
+def _format_export_eligibility(eligibility: dict[str, object]) -> str:
+    return "\n".join(
+        [
+            "Final LUT export eligibility:",
+            f"eligible={eligibility.get('eligible')}",
+            f"blocking_reason={eligibility.get('blocking_reason') or 'none'}",
+            f"result_status={eligibility.get('result_status')}",
+            f"finite_first_modeling_status={eligibility.get('finite_first_modeling_status')}",
+            f"required_columns={', '.join(str(item) for item in eligibility.get('required_columns', []))}",
+            f"actual_columns={', '.join(str(item) for item in eligibility.get('actual_columns', [])) or 'none'}",
+        ]
+    )
